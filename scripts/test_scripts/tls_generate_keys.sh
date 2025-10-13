@@ -107,35 +107,44 @@ function classic_keygen() {
 
     for sig in "${classic_sigs[@]}"; do
 
-        # Format name and key generation commands
+        # Sanitize the algorithm name for filenames
+        sig_name="${sig//[:\/]/_}"
+
+        # Define RSA keygen command if applicable
         if [[ $sig == RSA:* ]]; then
-            sig_name="${sig/:/_}"
-            keygen_cmd="-newkey rsa:${sig#RSA:}"
+            key_bits="${sig#RSA:}"
+            keygen_cmd="-newkey rsa:${key_bits}"
         else
-            sig_name=$sig
             keygen_cmd=""
         fi
 
         echo "[INFO] Generating cross-signed classic chain for $sig_name"
 
-        # === 1. Root A (untrusted) ===
+        # === 1. Root A (untrusted CA) ===
         if [[ $sig == RSA:* ]]; then
-            "$openssl_path/bin/openssl" req -x509 -new $keygen_cmd \
+            "$openssl_path/bin/openssl" req -new -nodes $keygen_cmd \
                 -keyout "$classic_cert_dir/${sig_name}_RootA.key" \
-                -out "$classic_cert_dir/${sig_name}_RootA.crt" \
-                -nodes -subj "/CN=RootA $sig CA" -days 365 \
+                -out "$classic_cert_dir/${sig_name}_RootA.csr" \
+                -subj "/CN=RootA $sig CA" \
                 -config "$openssl_path/openssl.cnf"
         else
-            "$openssl_path/bin/openssl" ecparam -name $sig -genkey \
+            "$openssl_path/bin/openssl" ecparam -name "$sig" -genkey \
                 -out "$classic_cert_dir/${sig_name}_RootA.key"
-            "$openssl_path/bin/openssl" req -x509 -new \
+            "$openssl_path/bin/openssl" req -new \
                 -key "$classic_cert_dir/${sig_name}_RootA.key" \
-                -out "$classic_cert_dir/${sig_name}_RootA.crt" \
-                -subj "/CN=RootA $sig CA" -days 365 \
+                -out "$classic_cert_dir/${sig_name}_RootA.csr" \
+                -subj "/CN=RootA $sig CA" \
                 -config "$openssl_path/openssl.cnf"
         fi
 
-        # === 2. Root B (trusted) ===
+        # Self-sign RootA (so it can issue IntermediateA)
+        "$openssl_path/bin/openssl" x509 -req \
+            -in "$classic_cert_dir/${sig_name}_RootA.csr" \
+            -signkey "$classic_cert_dir/${sig_name}_RootA.key" \
+            -out "$classic_cert_dir/${sig_name}_RootA.crt" \
+            -days 365
+
+        # === 2. Root B (trusted CA) ===
         if [[ $sig == RSA:* ]]; then
             "$openssl_path/bin/openssl" req -x509 -new $keygen_cmd \
                 -keyout "$classic_cert_dir/${sig_name}_RootB.key" \
@@ -143,7 +152,7 @@ function classic_keygen() {
                 -nodes -subj "/CN=RootB $sig CA" -days 365 \
                 -config "$openssl_path/openssl.cnf"
         else
-            "$openssl_path/bin/openssl" ecparam -name $sig -genkey \
+            "$openssl_path/bin/openssl" ecparam -name "$sig" -genkey \
                 -out "$classic_cert_dir/${sig_name}_RootB.key"
             "$openssl_path/bin/openssl" req -x509 -new \
                 -key "$classic_cert_dir/${sig_name}_RootB.key" \
@@ -152,24 +161,23 @@ function classic_keygen() {
                 -config "$openssl_path/openssl.cnf"
         fi
 
-        # === 3. RootB cross-signs RootA ===
+        # === 3. RootB cross-signs RootA CSR ===
         "$openssl_path/bin/openssl" x509 -req \
-            -in "$classic_cert_dir/${sig_name}_RootA.crt" \
+            -in "$classic_cert_dir/${sig_name}_RootA.csr" \
             -out "$classic_cert_dir/${sig_name}_RootA_cross_by_RootB.crt" \
             -CA "$classic_cert_dir/${sig_name}_RootB.crt" \
             -CAkey "$classic_cert_dir/${sig_name}_RootB.key" \
-            -CAcreateserial -days 365 \
-            -copy_extensions copyall
+            -CAcreateserial -days 365
 
         # === 4. IntermediateA signed by RootA ===
         if [[ $sig == RSA:* ]]; then
-            "$openssl_path/bin/openssl" req -new $keygen_cmd \
+            "$openssl_path/bin/openssl" req -new -nodes $keygen_cmd \
                 -keyout "$classic_cert_dir/${sig_name}_IntermediateA.key" \
                 -out "$classic_cert_dir/${sig_name}_IntermediateA.csr" \
-                -nodes -subj "/CN=IntermediateA $sig" \
+                -subj "/CN=IntermediateA $sig" \
                 -config "$openssl_path/openssl.cnf"
         else
-            "$openssl_path/bin/openssl" ecparam -name $sig -genkey \
+            "$openssl_path/bin/openssl" ecparam -name "$sig" -genkey \
                 -out "$classic_cert_dir/${sig_name}_IntermediateA.key"
             "$openssl_path/bin/openssl" req -new \
                 -key "$classic_cert_dir/${sig_name}_IntermediateA.key" \
@@ -183,20 +191,19 @@ function classic_keygen() {
             -out "$classic_cert_dir/${sig_name}_IntermediateA.crt" \
             -CA "$classic_cert_dir/${sig_name}_RootA.crt" \
             -CAkey "$classic_cert_dir/${sig_name}_RootA.key" \
-            -CAcreateserial -days 365 \
-            -copy_extensions copyall
+            -CAcreateserial -days 365
 
         rm -f "$classic_cert_dir/${sig_name}_IntermediateA.csr"
 
         # === 5. Server certificate signed by IntermediateA ===
         if [[ $sig == RSA:* ]]; then
-            "$openssl_path/bin/openssl" req -new $keygen_cmd \
+            "$openssl_path/bin/openssl" req -new -nodes $keygen_cmd \
                 -keyout "$classic_cert_dir/${sig_name}_srv.key" \
                 -out "$classic_cert_dir/${sig_name}_srv.csr" \
-                -nodes -subj "/CN=Server $sig" \
+                -subj "/CN=Server $sig" \
                 -config "$openssl_path/openssl.cnf"
         else
-            "$openssl_path/bin/openssl" ecparam -name $sig -genkey \
+            "$openssl_path/bin/openssl" ecparam -name "$sig" -genkey \
                 -out "$classic_cert_dir/${sig_name}_srv.key"
             "$openssl_path/bin/openssl" req -new \
                 -key "$classic_cert_dir/${sig_name}_srv.key" \
@@ -210,12 +217,11 @@ function classic_keygen() {
             -out "$classic_cert_dir/${sig_name}_srv.crt" \
             -CA "$classic_cert_dir/${sig_name}_IntermediateA.crt" \
             -CAkey "$classic_cert_dir/${sig_name}_IntermediateA.key" \
-            -CAcreateserial -days 365 \
-            -copy_extensions copyall
+            -CAcreateserial -days 365
 
         rm -f "$classic_cert_dir/${sig_name}_srv.csr"
 
-        # === 6. Build full chain for server ===
+        # === 6. Build full server chain ===
         cat \
             "$classic_cert_dir/${sig_name}_srv.crt" \
             "$classic_cert_dir/${sig_name}_IntermediateA.crt" \
@@ -240,43 +246,50 @@ function pqc_keygen() {
     #  => Client trusts only RootB.crt
 
     for sig in "${sig_algs[@]}"; do
-        sig_name="${sig/:/_}"
+        sig_name="${sig//[:\/]/_}"
 
         echo "[INFO] Generating PQC cross-signed chain for $sig_name"
 
         # === 1. Root A (untrusted) ===
-        "$openssl_path/bin/openssl" req -x509 -new -newkey "$sig" \
+        "$openssl_path/bin/openssl" req -new -newkey "$sig" -nodes \
             -keyout "$pqc_cert_dir/${sig_name}_RootA.key" \
-            -out "$pqc_cert_dir/${sig_name}_RootA.crt" \
-            -nodes -subj "/CN=RootA $sig CA" -days 365 \
+            -out "$pqc_cert_dir/${sig_name}_RootA.csr" \
+            -subj "/CN=RootA $sig CA" \
             -config "$openssl_path/openssl.cnf" \
-            -provider default -provider oqsprovider -provider-path "$provider_path"
+            $PROV_ARGS
+
+        # Self-sign RootA
+        "$openssl_path/bin/openssl" x509 -req \
+            -in "$pqc_cert_dir/${sig_name}_RootA.csr" \
+            -signkey "$pqc_cert_dir/${sig_name}_RootA.key" \
+            -out "$pqc_cert_dir/${sig_name}_RootA.crt" \
+            -days 365 \
+            $PROV_ARGS
 
         # === 2. Root B (trusted) ===
-        "$openssl_path/bin/openssl" req -x509 -new -newkey "$sig" \
+        "$openssl_path/bin/openssl" req -x509 -new -newkey "$sig" -nodes \
             -keyout "$pqc_cert_dir/${sig_name}_RootB.key" \
             -out "$pqc_cert_dir/${sig_name}_RootB.crt" \
-            -nodes -subj "/CN=RootB $sig CA" -days 365 \
+            -subj "/CN=RootB $sig CA" -days 365 \
             -config "$openssl_path/openssl.cnf" \
-            -provider default -provider oqsprovider -provider-path "$provider_path"
+            $PROV_ARGS
 
-        # === 3. RootB cross-signs RootA ===
+        # === 3. RootB cross-signs RootA CSR ===
         "$openssl_path/bin/openssl" x509 -req \
-            -in "$pqc_cert_dir/${sig_name}_RootA.crt" \
+            -in "$pqc_cert_dir/${sig_name}_RootA.csr" \
             -out "$pqc_cert_dir/${sig_name}_RootA_cross_by_RootB.crt" \
             -CA "$pqc_cert_dir/${sig_name}_RootB.crt" \
             -CAkey "$pqc_cert_dir/${sig_name}_RootB.key" \
             -CAcreateserial -days 365 \
-            -copy_extensions copyall \
-            -provider default -provider oqsprovider -provider-path "$provider_path"
+            $PROV_ARGS
 
-        # === 4. Intermediate A (issued by RootA) ===
-        "$openssl_path/bin/openssl" req -new -newkey "$sig" \
+        # === 4. IntermediateA signed by RootA ===
+        "$openssl_path/bin/openssl" req -new -newkey "$sig" -nodes \
             -keyout "$pqc_cert_dir/${sig_name}_IntermediateA.key" \
             -out "$pqc_cert_dir/${sig_name}_IntermediateA.csr" \
-            -nodes -subj "/CN=IntermediateA $sig" \
+            -subj "/CN=IntermediateA $sig" \
             -config "$openssl_path/openssl.cnf" \
-            -provider default -provider oqsprovider -provider-path "$provider_path"
+            $PROV_ARGS
 
         "$openssl_path/bin/openssl" x509 -req \
             -in "$pqc_cert_dir/${sig_name}_IntermediateA.csr" \
@@ -284,18 +297,17 @@ function pqc_keygen() {
             -CA "$pqc_cert_dir/${sig_name}_RootA.crt" \
             -CAkey "$pqc_cert_dir/${sig_name}_RootA.key" \
             -CAcreateserial -days 365 \
-            -copy_extensions copyall \
-            -provider default -provider oqsprovider -provider-path "$provider_path"
+            $PROV_ARGS
 
         rm -f "$pqc_cert_dir/${sig_name}_IntermediateA.csr"
 
-        # === 5. Server (issued by IntermediateA) ===
-        "$openssl_path/bin/openssl" req -new -newkey "$sig" \
+        # === 5. Server signed by IntermediateA ===
+        "$openssl_path/bin/openssl" req -new -newkey "$sig" -nodes \
             -keyout "$pqc_cert_dir/${sig_name}_srv.key" \
             -out "$pqc_cert_dir/${sig_name}_srv.csr" \
-            -nodes -subj "/CN=Server $sig" \
+            -subj "/CN=Server $sig" \
             -config "$openssl_path/openssl.cnf" \
-            -provider default -provider oqsprovider -provider-path "$provider_path"
+            $PROV_ARGS
 
         "$openssl_path/bin/openssl" x509 -req \
             -in "$pqc_cert_dir/${sig_name}_srv.csr" \
@@ -303,12 +315,11 @@ function pqc_keygen() {
             -CA "$pqc_cert_dir/${sig_name}_IntermediateA.crt" \
             -CAkey "$pqc_cert_dir/${sig_name}_IntermediateA.key" \
             -CAcreateserial -days 365 \
-            -copy_extensions copyall \
-            -provider default -provider oqsprovider -provider-path "$provider_path"
+            $PROV_ARGS
 
         rm -f "$pqc_cert_dir/${sig_name}_srv.csr"
 
-        # === 6. Server chain ===
+        # === 6. Build server chain ===
         cat \
             "$pqc_cert_dir/${sig_name}_srv.crt" \
             "$pqc_cert_dir/${sig_name}_IntermediateA.crt" \
