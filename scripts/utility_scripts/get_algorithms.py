@@ -63,7 +63,7 @@ def setup_base_env():
     # Determine the directory that the script is being executed from and set the marker filename
     script_dir = os.path.dirname(os.path.abspath(__file__))
     current_dir = script_dir
-    marker_filename = ".pqc_eval_dir_marker.tmp"
+    marker_filename = ".pqc_leo_dir_marker.tmp"
 
     # Continue moving up the directory tree until the .pqc_eval_dir_marker.tmp file is found
     while True:
