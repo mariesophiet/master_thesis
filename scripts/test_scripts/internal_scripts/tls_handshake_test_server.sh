@@ -3,17 +3,17 @@
 # Copyright (c) 2023-2025 Callum Turino
 # SPDX-License-Identifier: MIT
 
-# Server-side script for executing TLS handshake performance tests in coordination with a remote client. 
+# Server-side script for executing TLS handshake performance tests in coordination with a remote client.
 # It evaluates all supported combinations of classic, Post-Quantum Cryptography (PQC), and Hybrid-PQC signature
-# and Key Encapsulation Mechanism (KEM) algorithms using OpenSSL 3.5.0, with support for both native PQC 
-# implementations and those integrated via OQS-Provider. The script performs three main test suites: 
-# PQC-only, Hybrid-PQC, and Classic handshake tests. It is called by the TLS benchmarking controller script 
-# and uses globally defined test parameters, certificate and key files, and control signalling for synchronisation with the client. 
+# and Key Encapsulation Mechanism (KEM) algorithms using OpenSSL 3.5.0, with support for both native PQC
+# implementations and those integrated via OQS-Provider. The script performs three main test suites:
+# PQC-only, Hybrid-PQC, and Classic handshake tests. It is called by the TLS benchmarking controller script
+# and uses globally defined test parameters, certificate and key files, and control signalling for synchronisation with the client.
 
 #-------------------------------------------------------------------------------------------------------------------------------
 function setup_base_env() {
-    # Function for setting up the basic global variables for the script. This includes setting the root directory, the global 
-    # library paths for the test suite, and creating the algorithm arrays. The function establishes the root path by determining 
+    # Function for setting up the basic global variables for the script. This includes setting the root directory, the global
+    # library paths for the test suite, and creating the algorithm arrays. The function establishes the root path by determining
     # the path of the script and using this, determines the root directory of the project.
 
     # Determine the directory that the script is being run from
@@ -22,10 +22,10 @@ function setup_base_env() {
     # Try and find the .dir_marker.tmp file to determine the project's root directory
     current_dir="$script_dir"
 
-    # Continue moving up the directory tree until the .pqc_leo_dir_marker.tmp file is found
+    # Continue moving up the directory tree until the .pqc_eval_dir_marker.tmp file is found
     while true; do
 
-        # Check if the .pqc_leo_dir_marker.tmp file is present
+        # Check if the .pqc_eval_dir_marker.tmp file is present
         if [ -f "$current_dir/.pqc_leo_dir_marker.tmp" ]; then
             root_dir="$current_dir"
             break
@@ -96,7 +96,7 @@ function setup_base_env() {
 #-------------------------------------------------------------------------------------------------------------------------------
 function set_test_env() {
     # Function for setting the default group depending on what type of TLS test is being performed. The function is passed
-    # the test type and the configure mode as arguments. The test type is used to determine which algorithms to use for the 
+    # the test type and the configure mode as arguments. The test type is used to determine which algorithms to use for the
     # test, and the configure mode is used to determine whether to use the default or custom OpenSSL configuration.
     # The test type options are: (pqc, hybrid-pqc, classic) 0=pqc, 1=hybrid, 2=classic.
 
@@ -154,7 +154,7 @@ function set_test_env() {
         for hybr_kem_alg in "${kem_algs[@]}"; do
             current_group+=":$hybr_kem_alg"
         done
-        
+
         # Remove the beginning : at index 0
         current_group="${current_group:1}"
 
@@ -179,13 +179,13 @@ function set_test_env() {
 
     # Export the default group env var for openssl.cnf
     export DEFAULT_GROUPS=$current_group
-    
+
 }
 
 #-------------------------------------------------------------------------------------------------------------------------------
 function check_control_port() {
-    # Helper function that waits until the client is listening on the control port 
-    # before allowing the client to send a control signal. If enabled, it includes 
+    # Helper function that waits until the client is listening on the control port
+    # before allowing the client to send a control signal. If enabled, it includes
     # a short delay to ensure the client is ready to receive the connection.
 
     # Wait until the client is listening on the control port before sending the signal
@@ -284,7 +284,7 @@ function control_signal() {
 
 #-------------------------------------------------------------------------------------------------------------------------------
 function pqc_tests() {
-    # Function for performing the PQC and Hybrid-PQC TLS handshake tests. Digital signature and KEM algorithms are 
+    # Function for performing the PQC and Hybrid-PQC TLS handshake tests. Digital signature and KEM algorithms are
     # loaded based on the selected test type (0=pqc, 1=hybrid) via set_test_env. Using the current sig/kem
     # algorithm combination, the function starts an OpenSSL s_server process that the client can connect to.
 
@@ -317,7 +317,7 @@ function pqc_tests() {
 
                 # Set the cert and key files depending on the test type
                 if [ "$test_type" -eq 0 ]; then
-                    cert_file="$pqc_cert_dir/""${sig/:/_}""_srv.crt"
+                    cert_file="$pqc_cert_dir/""${sig/:/_}""_srv_chain.crt"
                     key_file="$pqc_cert_dir/""${sig/:/_}""_srv.key"
 
                 elif [ "$test_type" -eq 1 ]; then
@@ -362,13 +362,13 @@ function pqc_tests() {
                     echo "[ERROR] - 3000 failed attempts signal received from client, restarting sig/kem combination"
                     kill $server_pid
                     sleep 2
-                
+
                 fi
 
             done
 
         done
-    
+
     done
 
 }
@@ -410,7 +410,7 @@ function classic_tests() {
                 if [[ $classic_alg == "prime256v1" || $classic_alg == "secp384r1" || $classic_alg == "secp521r1" ]]; then
 
                     # Set the cert/key filenames for the current ECC algorithm
-                    classic_cert_file="$classic_cert_dir/${classic_alg}_srv.crt"
+                    classic_cert_file="$classic_cert_dir/${classic_alg}_srv_chain.crt"
                     classic_key_file="$classic_cert_dir/${classic_alg}_srv.key"
 
                     # Start the ECC test server processes
@@ -427,7 +427,7 @@ function classic_tests() {
                 else
 
                     # Set the cert/key filenames for the current RSA algorithm
-                    classic_cert_file="$classic_cert_dir/${classic_alg}_srv.crt"
+                    classic_cert_file="$classic_cert_dir/${classic_alg}_srv_chain.crt"
                     classic_key_file="$classic_cert_dir/${classic_alg}_srv.key"
 
                     # Start the RSA test server processes
@@ -438,7 +438,7 @@ function classic_tests() {
                         -tls1_3 \
                         -ciphersuites $cipher \
                         -accept $S_SERVER_PORT &
-                    server_pid=$!  
+                    server_pid=$!
 
                 fi
 
@@ -466,7 +466,7 @@ function classic_tests() {
                     echo "[ERROR] - 3000 failed attempts signal received from client, restarting cipher/sig combination"
                     kill $server_pid
                     sleep 2
-                
+
                 fi
 
             done
@@ -553,6 +553,6 @@ function tls_server_test_entrypoint() {
         echo "[OUTPUT] - All $run_num Testing Completed"
 
     done
-    
+
 }
 tls_server_test_entrypoint
