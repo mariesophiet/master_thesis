@@ -4,14 +4,14 @@
 # SPDX-License-Identifier: MIT
 
 # Script for generating server certificates and keys for TLS handshake benchmarking.
-# Generates classic, Post-Quantum, and Hybrid-PQC certificates using OpenSSL 3.5.0, 
+# Generates classic, Post-Quantum, and Hybrid-PQC certificates using OpenSSL 3.5.0,
 # using PQC implementations natively available in OpenSSL and those integrated via OQS-Provider.
 # The generated key material must be copied to the client machine unless both client and server run on the same system.
 
 #-------------------------------------------------------------------------------------------------------------------------------
 function setup_base_env() {
-    # Function for setting up the basic global variables for the script. This includes setting the root directory, the global 
-    # library paths for the test suite, and creating the algorithm arrays. The function establishes the root path by determining 
+    # Function for setting up the basic global variables for the script. This includes setting the root directory, the global
+    # library paths for the test suite, and creating the algorithm arrays. The function establishes the root path by determining
     # the path of the script and using this, determines the root directory of the project.
 
     # Determine the directory that the script is being run from
@@ -20,7 +20,7 @@ function setup_base_env() {
     # Try and find the .dir_marker.tmp file to determine the project's root directory
     current_dir="$script_dir"
 
-    # Continue moving up the directory tree until the .pqc_leo_dir_marker.tmp file is found
+    # Continue moving up the directory tree until the .pqc_eval_dir_marker.tmp file is found
     while true; do
 
         # Check if the .pqc_leo_dir_marker.tmp file is present
@@ -54,7 +54,7 @@ function setup_base_env() {
     if [ ! -d "$oqs_provider_path" ]; then
         echo "[ERROR] - OQS-Provider library not found in $libs_dir"
         exit 1
-    
+
     elif [ ! -d "$openssl_path" ]; then
         echo "[ERROR] - OpenSSL library not found in $libs_dir"
         exit 1
@@ -105,121 +105,44 @@ function classic_keygen() {
     # Loop through the classic digital signature to generate the CA/server certs and private-key files
     for sig in "${classic_sigs[@]}"; do
 
-        # Modify the signature name formatting if RSA
-        if [[ $sig == RSA:* ]]; then 
-            sig_name="${sig/:/_}"
-        else
-            sig_name=$sig
-        fi
-
         # Check if the signature is RSA or an ECC curve and generate the certs/keys accordingly
         if [[ $sig == RSA:* ]]; then
 
-            # Generate the CA cert and key for the current RSA signature algorithm
+            sig_name="${sig/:/_}"
             "$openssl_path/bin/openssl" req \
                 -x509 \
-                -new \
-                -newkey rsa:${sig#RSA:} \
-                -keyout "$classic_cert_dir/${sig_name}_CA.key" \
-                -out "$classic_cert_dir/${sig_name}_CA.crt" \
-                -nodes \
-                -subj "/CN=oqstest CA" \
-                -days 365 \
-                -config "$openssl_path/openssl.cnf" \
-                -provider default \
-                -provider oqsprovider \
-                -provider-path "$provider_path"
-
-            # Generate the server certificate signing request for the current RSA signature algorithm
-            "$openssl_path/bin/openssl" req \
-                -new \
                 -newkey rsa:${sig#RSA:} \
                 -keyout "$classic_cert_dir/${sig_name}_srv.key" \
-                -out "$classic_cert_dir/${sig_name}_srv.csr" \
+                -out "$classic_cert_dir/${sig_name}_srv.crt" \
                 -nodes \
-                -subj "/CN=oqstest server" \
+                -subj "/CN=oqstest $sig_name selfsigned" \
+                -days 365 \
                 -config "$openssl_path/openssl.cnf" \
                 -provider default \
                 -provider oqsprovider \
                 -provider-path "$provider_path"
-            
-            # Sign the server CSR with the RSA CA cert
-            "$openssl_path/bin/openssl" x509 \
-                -req \
-                -in "$classic_cert_dir/${sig_name}_srv.csr" \
-                -out "$classic_cert_dir/${sig_name}_srv.crt" \
-                -CA "$classic_cert_dir/${sig_name}_CA.crt" \
-                -CAkey "$classic_cert_dir/${sig_name}_CA.key" \
-                -CAcreateserial \
-                -days 365 \
-                -provider default \
-                -provider oqsprovider \
-                -provider-path "$provider_path"
-
-            # Remove the server CSR file
-            rm -f "$classic_cert_dir/${sig_name}_srv.csr"
 
         else
 
-            # Generate the ECC CA private key using the specified curve
+            sig_name=$sig
             "$openssl_path/bin/openssl" ecparam \
-                -name $sig \
-                -genkey \
-                -out "$classic_cert_dir/${sig_name}_CA.key" \
-                -provider default \
-                -provider oqsprovider \
-                -provider-path "$provider_path"
-
-            # Generate the ECC CA certificate using the generated key
-            "$openssl_path/bin/openssl" req \
-                -x509 \
-                -new \
-                -key "$classic_cert_dir/${sig_name}_CA.key" \
-                -out "$classic_cert_dir/${sig_name}_CA.crt" \
-                -nodes \
-                -subj "/CN=oqstest CA" \
-                -days 365 \
-                -config "$openssl_path/openssl.cnf" \
-                -provider default \
-                -provider oqsprovider \
-                -provider-path "$provider_path"
-
-            # Generate the ECC server private key using the same curve
-            "$openssl_path/bin/openssl" ecparam $PROV_ARGS \
-                -name $sig \
-                -genkey \
+                -name $sig -genkey \
                 -out "$classic_cert_dir/${sig_name}_srv.key" \
                 -provider default \
                 -provider oqsprovider \
                 -provider-path "$provider_path"
-
-            # Generate the certificate signing request for the server using the ECC private key
-            "$openssl_path/bin/openssl" req $PROV_ARGS \
+            "$openssl_path/bin/openssl" req \
+                -x509 \
                 -new \
                 -key "$classic_cert_dir/${sig_name}_srv.key" \
-                -out "$classic_cert_dir/${sig_name}_srv.csr" \
+                -out "$classic_cert_dir/${sig_name}_srv.crt" \
                 -nodes \
-                -subj "/CN=oqstest server" \
+                -subj "/CN=oqstest $sig_name selfsigned" \
+                -days 365 \
                 -config "$openssl_path/openssl.cnf" \
                 -provider default \
                 -provider oqsprovider \
                 -provider-path "$provider_path"
-
-            # Sign the server CSR using the ECC CA certificate and key
-            "$openssl_path/bin/openssl" x509 $PROV_ARGS \
-                -req \
-                -in "$classic_cert_dir/${sig_name}_srv.csr" \
-                -out "$classic_cert_dir/${sig_name}_srv.crt" \
-                -CA "$classic_cert_dir/${sig_name}_CA.crt" \
-                -CAkey "$classic_cert_dir/${sig_name}_CA.key" \
-                -CAcreateserial \
-                -days 365 \
-                -provider default \
-                -provider oqsprovider \
-                -provider-path "$provider_path"
-
-            # Remove the server CSR file
-            rm -f "$classic_cert_dir/${sig_name}_srv.csr"
 
         fi
 
@@ -230,56 +153,25 @@ function classic_keygen() {
 #-------------------------------------------------------------------------------------------------------------------------------
 function pqc_keygen() {
     # Function for generating server certificates and private keys required for PQC TLS handshake benchmarking tests.
-    # This includes creating CA certificates, server certificate signing requests, and signed server certificates using PQC digital 
+    # This includes creating CA certificates, server certificate signing requests, and signed server certificates using PQC digital
     # signature algorithms supported both natively in OpenSSL and integrated into OpenSSL via the OQS-Provider.
 
     # Loop through the PQC digital signature to generate the CA/server certs and private-key files
     for sig in "${sig_algs[@]}"; do
 
-        # Generate the CA certificate and private key for the current PQC signature algorithm
+        # scenario 1: Generate the srv self-signed certificate and private key for the current PQC signature algorithm
         "$openssl_path/bin/openssl" req \
             -x509 \
-            -new \
-            -newkey $sig \
-            -keyout "$pqc_cert_dir/${sig}_CA.key" \
-            -out "$pqc_cert_dir/${sig}_CA.crt" \
-            -nodes \
-            -subj "/CN=oqstest $sig CA" \
-            -days 365 \
-            -config "$openssl_path/openssl.cnf" \
-            -provider default \
-            -provider oqsprovider \
-            -provider-path "$provider_path"
-
-        # Generate the server certificate signing request for the current PQC signature algorithm
-        "$openssl_path/bin/openssl" req \
-            -new \
             -newkey $sig \
             -keyout "$pqc_cert_dir/${sig}_srv.key" \
-            -out "$pqc_cert_dir/${sig}_srv.csr" \
+            -out "$pqc_cert_dir/${sig}_srv.crt" \
             -nodes \
-            -subj "/CN=oqstest $sig server" \
+            -subj "/CN=oqstest $sig selfsigned" \
+            -days 365 \
             -config "$openssl_path/openssl.cnf" \
             -provider default \
             -provider oqsprovider \
             -provider-path "$provider_path"
-
-        # Sign the server CSR using the PQC CA certificate and key
-        "$openssl_path/bin/openssl" x509 \
-            -req \
-            -in "$pqc_cert_dir/${sig}_srv.csr" \
-            -out "$pqc_cert_dir/${sig}_srv.crt" \
-            -CA "$pqc_cert_dir/${sig}_CA.crt" \
-            -CAkey "$pqc_cert_dir/${sig}_CA.key" \
-            -CAcreateserial \
-            -days 365 \
-            -provider default \
-            -provider oqsprovider \
-            -provider-path "$provider_path"
-
-        # Remove the server CSR file
-        rm -f "$pqc_cert_dir/${sig}_srv.csr"
-    
     done
 
 }
@@ -287,7 +179,7 @@ function pqc_keygen() {
 #-------------------------------------------------------------------------------------------------------------------------------
 function hybrid_pqc_keygen() {
     # Function for generating server certificates and private keys required for Hybrid-PQC TLS handshake benchmarking tests.
-    # This includes creating CA certificates, server certificate signing requests, and signed server certificates using Hybrid-PQC 
+    # This includes creating CA certificates, server certificate signing requests, and signed server certificates using Hybrid-PQC
     # digital signature algorithms supported both natively in OpenSSL and integrated into OpenSSL via the OQS-Provider.
 
     # Loop through the Hybrid-PQC digital signature to generate the CA/server certs and private-key files
@@ -342,12 +234,12 @@ function hybrid_pqc_keygen() {
 
 #-------------------------------------------------------------------------------------------------------------------------------
 function main() {
-    # Main function coordinating the generation of certificates and private keys for TLS handshake benchmarking tests. 
+    # Main function coordinating the generation of certificates and private keys for TLS handshake benchmarking tests.
     # This includes support for classic, post-quantum (PQC), and Hybrid-PQC digital signature algorithms.
 
     # Output the welcome message to the terminal
     echo "#########################################################"
-    echo "PQC-LEO - TLS Certificate & Key Generator"
+    echo "PQC-Evaluation-Tools - TLS Certificate & Key Generator"
     echo "Classic | PQC | Hybrid-PQC (OpenSSL 3.5.0 + OQS-Provider)"
     echo -e "#########################################################\n"
 
