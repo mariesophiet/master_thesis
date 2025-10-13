@@ -5,17 +5,17 @@
 
 # Client-side script for executing TLS handshake performance tests in coordination with a remote server.
 # It evaluates all supported combinations of classic, Post-Quantum Cryptography (PQC), and Hybrid-PQC signature
-# and Key Encapsulation Mechanism (KEM) algorithms using OpenSSL 3.5.0, with support for both native PQC 
-# implementations and those integrated via OQS-Provider. The script performs three main test suites: 
-# PQC-only, Hybrid-PQC, and Classic handshake tests. It is called by the TLS benchmarking controller script 
+# and Key Encapsulation Mechanism (KEM) algorithms using OpenSSL 3.5.0, with support for both native PQC
+# implementations and those integrated via OQS-Provider. The script performs three main test suites:
+# PQC-only, Hybrid-PQC, and Classic handshake tests. It is called by the TLS benchmarking controller script
 # and uses globally defined test parameters, certificate files, and control signalling for synchronisation with the server.
 # As the client-side script, it stores the output of the tests based on parameters passed to it from the main controller script,
 # saving the results to the designated directories for later analysis.
 
 #-------------------------------------------------------------------------------------------------------------------------------
 function setup_base_env() {
-    # Function for setting up the basic global variables for the script. This includes setting the root directory, the global 
-    # library paths for the test suite, and creating the algorithm arrays. The function establishes the root path by determining 
+    # Function for setting up the basic global variables for the script. This includes setting the root directory, the global
+    # library paths for the test suite, and creating the algorithm arrays. The function establishes the root path by determining
     # the path of the script and using this, determines the root directory of the project.
 
     # Determine the directory that the script is being run from
@@ -24,7 +24,7 @@ function setup_base_env() {
     # Try and find the .dir_marker.tmp file to determine the project's root directory
     current_dir="$script_dir"
 
-    # Continue moving up the directory tree until the .pqc_leo_dir_marker.tmp file is found
+    # Continue moving up the directory tree until the .pqc_eval_dir_marker.tmp file is found
     while true; do
 
         # Check if the .pqc_leo_dir_marker.tmp file is present
@@ -92,13 +92,13 @@ function setup_base_env() {
         echo "[ERROR] - Control sleep time env variable not set. This likely indicates a broader issue with the TLS benchmarking controller script."
         exit 1
     fi
-    
+
 }
 
 #-------------------------------------------------------------------------------------------------------------------------------
 function set_test_env() {
     # Function for setting the default group depending on what type of TLS test is being performed. The function is passed
-    # the test type and the configure mode as arguments. The test type is used to determine which algorithms to use for the 
+    # the test type and the configure mode as arguments. The test type is used to determine which algorithms to use for the
     # test, and the configure mode is used to determine whether to use the default or custom OpenSSL configuration.
     # The test type options are: (pqc, hybrid-pqc, classic) 0=pqc, 1=hybrid, 2=classic.
 
@@ -156,7 +156,7 @@ function set_test_env() {
         for hybr_kem_alg in "${kem_algs[@]}"; do
             current_group+=":$hybr_kem_alg"
         done
-        
+
         # Remove the beginning : at index 0
         current_group="${current_group:1}"
 
@@ -181,13 +181,13 @@ function set_test_env() {
 
     # Export the default group env var for openssl.cnf
     export DEFAULT_GROUPS=$current_group
-    
+
 }
 
 #-------------------------------------------------------------------------------------------------------------------------------
 function check_control_port() {
-    # Helper function that waits until the server is listening on the control port 
-    # before allowing the client to send a control signal. If enabled, it includes 
+    # Helper function that waits until the server is listening on the control port
+    # before allowing the client to send a control signal. If enabled, it includes
     # a short delay to ensure the server is ready to receive the connection.
 
     # Wait until the server is listening on the control port before sending the signal
@@ -286,7 +286,7 @@ function control_signal() {
 
 #-------------------------------------------------------------------------------------------------------------------------------
 function pqc_tests() {
-    # Function for performing the PQC and Hybrid-PQC TLS handshake tests. Digital signature and KEM algorithms are 
+    # Function for performing the PQC and Hybrid-PQC TLS handshake tests. Digital signature and KEM algorithms are
     # loaded based on the selected test type (0=pqc, 1=hybrid) via set_test_env. Each sig/KEM pair is tested
     # using OpenSSL's s_time.
 
@@ -305,7 +305,7 @@ function pqc_tests() {
                 # Output the current TLS test info
                 echo -e "\n-------------------------------------------------------------------------"
                 echo "[OUTPUT] - Run Number - $run_num, Signature - $sig, KEM - $kem"
-                
+
                 # Perform the iteration handshake
                 control_signal "iteration_handshake"
 
@@ -321,7 +321,7 @@ function pqc_tests() {
 
                     # Set the cert and key files depending on the test type
                     if [ "$test_type" -eq 0 ]; then
-                        cert_file="$pqc_cert_dir/""${sig_name}""_CA.crt"
+                        cert_file="$pqc_cert_dir/${sig_name}_RootB.crt"
                         handshake_dir=$PQC_HANDSHAKE
 
                     elif [ "$test_type" -eq 1 ]; then
@@ -363,7 +363,7 @@ function pqc_tests() {
                             break
 
                         fi
-                        
+
                     done
 
                     # Send the test complete or failed signal to the server, if failed, then restart the current run sig/kem combination
@@ -375,7 +375,7 @@ function pqc_tests() {
                         echo "[ERROR] - Failed to establish test connection, restarting current run sig/kem combination"
                         control_signal "control_send" "failed"
                         sleep 4
-                    
+
                     fi
 
                 elif [ $signal_message == "skip" ]; then
@@ -384,9 +384,9 @@ function pqc_tests() {
                     echo "[OUTPUT] - Skipping test as both sig and kem are classic!!!"
                     control_signal "control_send" "complete"
                     break
-                
+
                 fi
-            
+
             done
 
         done
@@ -425,7 +425,7 @@ function classic_tests() {
 
                 # Set the output filename based on the current combination and run and CA file
                 output_name="tls_handshake_classic_${run_num}_${cipher}_${classic_alg}.txt"
-                classic_cert_file="$classic_cert_dir/${classic_alg}_srv.crt"
+                classic_cert_file="$classic_cert_dir/${classic_alg}_RootB.crt"
 
                 # Reset the fail counter
                 fail_counter=0
@@ -437,6 +437,7 @@ function classic_tests() {
                     "$openssl_path/bin/openssl" s_time \
                         -connect $SERVER_IP:$S_SERVER_PORT \
                         -CAfile $classic_cert_file \
+                        -verify 1 \
                         -time $TIME_NUM > "$CLASSIC_HANDSHAKE/$output_name"
                     exit_code=$?
 
@@ -454,7 +455,7 @@ function classic_tests() {
                         break
 
                     fi
-                    
+
                 done
 
                 # Send the test complete or failed signal to the server
@@ -489,7 +490,7 @@ function tls_client_test_entrypoint() {
 
     # Setup the base environment for the test suite
     setup_base_env
-    
+
     # Check if custom ports have been used and, if so, output a warning message
     if [ "$SERVER_CONTROL_PORT" != "25000" ] || [ "$CLIENT_CONTROL_PORT" != "25001" ] || [ "$S_SERVER_PORT" != "4433" ]; then
         echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"

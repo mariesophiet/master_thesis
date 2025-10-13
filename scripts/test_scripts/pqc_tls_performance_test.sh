@@ -1034,9 +1034,9 @@ function main() {
     replace_old_results=0
 
     # Set the default TCP port values
-    server_control_port="25000"
-    client_control_port="25001"
-    s_server_port="4433"
+    server_control_port="25005"
+    client_control_port="25006"
+    s_server_port="4436"
 
     # Parse the command line arguments passed to the script, if any
     if [[ $# -gt 0 ]]; then
