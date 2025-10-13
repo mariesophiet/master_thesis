@@ -32,6 +32,13 @@ oqs_provider_path = ""
 openssl_lib_dir = ""
 oqs_provider_src_dir = ""
 
+
+list_of_study_algs = [
+    'prime256v1', 'Falcon-1024', 'ML-DSA-65', 'Dilithium2', 'falconpadded512', 'Falcon-padded-512', 'ML-DSA-44', 'MLDSA87', 'Dilithium5', 'SPHINCS+-SHA2-256f-simple', 'Dilithium3', 'secp384r1', 'sphincssha2192ssimple', 'MLDSA44', 'sphincssha2128ssimple', 'sphincssha2256fsimple', 'sphincssha2192fsimple', 'SPHINCS+-SHA2-192s-simple', 'RSA_2048', 'SPHINCS+-SHA2-128s-simple', 'MLKEM1024', 'sphincssha2128fsimple', 'Falcon-padded-1024', 'RSA_3072', 'SPHINCS+-SHA2-256s-simple', 'Falcon-512', 'falconpadded1024', 'ML-KEM-768', 'falcon1024', 'MLKEM768', 'SPHINCS+-SHA2-128f-simple', 'SPHINCS+-SHA2-192f-simple', 'ML-DSA-87', 'falcon512', 'ML-KEM-1024', 'sphincssha2256ssimple', 'MLDSA65', 'p256_mlkem512', 'p256_sphincsshake128ssimple', 'p256_sphincssha2128ssimple'
+]
+
+
+
 #------------------------------------------------------------------------------------------------------------------------------
 def output_help_message():
     """ Helper function for outputting the help message to the user when the --help flag is present or
@@ -56,12 +63,12 @@ def setup_base_env():
     # Determine the directory that the script is being executed from and set the marker filename
     script_dir = os.path.dirname(os.path.abspath(__file__))
     current_dir = script_dir
-    marker_filename = ".pqc_leo_dir_marker.tmp"
+    marker_filename = ".pqc_eval_dir_marker.tmp"
 
-    # Continue moving up the directory tree until the .pqc_leo_dir_marker.tmp file is found
+    # Continue moving up the directory tree until the .pqc_eval_dir_marker.tmp file is found
     while True:
 
-        # Check if the .pqc_leo_dir_marker.tmp file is present
+        # Check if the .pqc_eval_dir_marker.tmp file is present
         if os.path.isfile(os.path.join(current_dir, marker_filename)):
             root_dir = current_dir
             break
@@ -146,6 +153,7 @@ def liboqs_extract_algs(output_str):
     if extracted_algs is None:
         print("[ERROR] - No algorithms found in the output string.")
         sys.exit(1)
+    extracted_algs = [ea for ea in extracted_algs if ea in list_of_study_algs]
 
     return extracted_algs
 
@@ -174,6 +182,8 @@ def get_liboqs_algs():
                 # Extract the algorithms from the stderr
                 algs = liboqs_extract_algs(stderr)
 
+                algs = [a for a in algs if a in list_of_study_algs]
+
                 # Set the output filename for the current algorithm type
                 if "kem" in bin:
                     alg_list_file = os.path.join(output_dir, "kem_algs.txt")
@@ -183,7 +193,7 @@ def get_liboqs_algs():
                 # Filter out HQC KEM algorithms from the list if the HQC enabled flag is not set (temp fix for HQC bug)
                 if not os.path.exists(os.path.join(root_dir, "tmp", ".hqc_enabled.flag")):
                     algs = [alg for alg in algs if not alg.startswith("HQC")]
-                
+                #todo: update algs list as desired e.g.: algs = [myalg1, myalg2...]
                 # Write out the algorithms to the list file
                 write_to_file(algs, alg_list_file)
 
@@ -283,6 +293,9 @@ def extract_tls_algs(test_type, provider_type, output_str):
         else:
             print(f"[ERROR] - Unknown provider type '{provider_type}'")
             sys.exit(1)
+    #todo manually adjust algs, hybrid_algs
+    algs = [a for a in algs if a in list_of_study_algs]
+    hybrid_algs = [ha for ha in hybrid_algs if ha in list_of_study_algs]
 
     return algs, hybrid_algs
 
@@ -343,6 +356,7 @@ def get_tls_pqc_algs():
         speed_hybrid_alg_list_file = os.path.join(output_dir, f"tls_speed_hybr_{alg_type[:3]}_algs.txt")
 
         # Write out the algorithms to the list files
+        
         write_to_file(algs, alg_list_file)
         write_to_file(hybrid_algs, hybrid_alg_list_file)
         write_to_file(speed_algs, speed_list_file)
@@ -356,13 +370,16 @@ def set_tls_classic_algs():
     # Set the classic algorithms for the TLS benchmarking
     classic_kems = ["prime256v1", "secp384r1", "secp521r1"]
     classic_sigs = ["RSA_2048", "RSA_3072", "RSA_4096", "prime256v1", "secp384r1", "secp521r1"]
+    classic_kems = [ck for ck in classic_kems if ck in list_of_study_algs]
+    classic_sigs = [cs for cs in classic_sigs if cs in list_of_study_algs]
 
     # Set the output directory and text file names
     output_dir = os.path.join(root_dir, "test_data", "alg_lists")
     kem_list_file = os.path.join(output_dir, "classic_tls_kem_algs.txt")
     sig_list_file = os.path.join(output_dir, "classic_tls_sig_algs.txt")
-    
+    # todo:adjust all lists that are passed below
     # Write out the classic algorithms to the list files
+    
     write_to_file(classic_kems, kem_list_file)
     write_to_file(classic_sigs, sig_list_file)
 
