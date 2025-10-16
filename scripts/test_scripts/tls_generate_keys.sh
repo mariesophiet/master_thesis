@@ -425,7 +425,7 @@ function pqc_keygen() {
     done
 }
 
-function hybrid_keygen() {
+function hybrid_pqc_keygen() {
     # Function for generating cross-signed Hybrid-PQC certificate chains for TLS benchmarking.
     # Scenario:
     #  - RootA (not trusted by client)
