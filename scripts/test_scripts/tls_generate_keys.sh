@@ -307,7 +307,7 @@ function classic_keygen() {
     done
 }
 
-#-------------------------------------------------------------------------------------------------------------------------------
+# PQC function remains the same
 function pqc_keygen() {
     # Function for generating cross-signed PQC certificate chains for TLS benchmarking.
     # Scenario:
@@ -330,16 +330,10 @@ function pqc_keygen() {
             -out "$pqc_cert_dir/${sig_name}_RootA.csr" \
             -subj "/CN=RootA $sig CA" \
             -config "$openssl_path/openssl.cnf" \
-            $PROV_ARGS || {
+            -provider default -provider oqsprovider -provider-path "$provider_path" || {
             echo "[ERROR] Failed to create RootA CSR for $sig_name"
             continue
         }
-
-        # Verify CSR was created
-        if [ ! -f "$pqc_cert_dir/${sig_name}_RootA.csr" ]; then
-            echo "[ERROR] RootA CSR file not found for $sig_name"
-            continue
-        fi
 
         # Self-sign RootA
         "$openssl_path/bin/openssl" x509 -req \
@@ -347,7 +341,7 @@ function pqc_keygen() {
             -signkey "$pqc_cert_dir/${sig_name}_RootA.key" \
             -out "$pqc_cert_dir/${sig_name}_RootA.crt" \
             -days 365 \
-            $PROV_ARGS || {
+            -provider default -provider oqsprovider -provider-path "$provider_path" || {
             echo "[ERROR] Failed to self-sign RootA for $sig_name"
             continue
         }
@@ -358,30 +352,23 @@ function pqc_keygen() {
             -out "$pqc_cert_dir/${sig_name}_RootB.crt" \
             -subj "/CN=RootB $sig CA" -days 365 \
             -config "$openssl_path/openssl.cnf" \
-            $PROV_ARGS || {
+            -provider default -provider oqsprovider -provider-path "$provider_path" || {
             echo "[ERROR] Failed to create RootB for $sig_name"
             continue
         }
 
         # === 3. RootB cross-signs RootA CSR ===
-        if [ ! -f "$pqc_cert_dir/${sig_name}_RootA.csr" ]; then
-            echo "[ERROR] RootA CSR disappeared before cross-signing for $sig_name"
-            continue
-        fi
-
         "$openssl_path/bin/openssl" x509 -req \
             -in "$pqc_cert_dir/${sig_name}_RootA.csr" \
             -out "$pqc_cert_dir/${sig_name}_RootA_cross_by_RootB.crt" \
             -CA "$pqc_cert_dir/${sig_name}_RootB.crt" \
             -CAkey "$pqc_cert_dir/${sig_name}_RootB.key" \
             -CAcreateserial -days 365 \
-            $PROV_ARGS || {
+            -provider default -provider oqsprovider -provider-path "$provider_path" || {
             echo "[ERROR] Failed to cross-sign RootA by RootB for $sig_name"
-            ls -la "$pqc_cert_dir/${sig_name}_RootA"*
             continue
         }
 
-        # Remove CSR after successful cross-signing
         rm -f "$pqc_cert_dir/${sig_name}_RootA.csr"
 
         # === 4. IntermediateA signed by RootA ===
@@ -390,7 +377,7 @@ function pqc_keygen() {
             -out "$pqc_cert_dir/${sig_name}_IntermediateA.csr" \
             -subj "/CN=IntermediateA $sig" \
             -config "$openssl_path/openssl.cnf" \
-            $PROV_ARGS
+            -provider default -provider oqsprovider -provider-path "$provider_path"
 
         "$openssl_path/bin/openssl" x509 -req \
             -in "$pqc_cert_dir/${sig_name}_IntermediateA.csr" \
@@ -398,7 +385,7 @@ function pqc_keygen() {
             -CA "$pqc_cert_dir/${sig_name}_RootA.crt" \
             -CAkey "$pqc_cert_dir/${sig_name}_RootA.key" \
             -CAcreateserial -days 365 \
-            $PROV_ARGS
+            -provider default -provider oqsprovider -provider-path "$provider_path"
 
         rm -f "$pqc_cert_dir/${sig_name}_IntermediateA.csr"
 
@@ -408,7 +395,7 @@ function pqc_keygen() {
             -out "$pqc_cert_dir/${sig_name}_srv.csr" \
             -subj "/CN=Server $sig" \
             -config "$openssl_path/openssl.cnf" \
-            $PROV_ARGS
+            -provider default -provider oqsprovider -provider-path "$provider_path"
 
         "$openssl_path/bin/openssl" x509 -req \
             -in "$pqc_cert_dir/${sig_name}_srv.csr" \
@@ -416,7 +403,7 @@ function pqc_keygen() {
             -CA "$pqc_cert_dir/${sig_name}_IntermediateA.crt" \
             -CAkey "$pqc_cert_dir/${sig_name}_IntermediateA.key" \
             -CAcreateserial -days 365 \
-            $PROV_ARGS
+            -provider default -provider oqsprovider -provider-path "$provider_path"
 
         rm -f "$pqc_cert_dir/${sig_name}_srv.csr"
 
