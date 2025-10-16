@@ -126,7 +126,8 @@ function classic_keygen() {
 
             sig_name=$sig
             "$openssl_path/bin/openssl" ecparam \
-                -name $sig -genkey \
+                -name $sig \
+                -genkey \
                 -out "$classic_cert_dir/${sig_name}_srv.key" \
                 -provider default \
                 -provider oqsprovider \
@@ -185,48 +186,20 @@ function hybrid_pqc_keygen() {
     # Loop through the Hybrid-PQC digital signature to generate the CA/server certs and private-key files
     for sig in "${hybrid_sig_algs[@]}"; do
 
-        # Generate the CA certificate and private key for the current Hybrid-PQC signature algorithm
+        echo "Generating Hybrid-PQC self-signed certificate for: $sig"
+
         "$openssl_path/bin/openssl" req \
             -x509 \
-            -new \
             -newkey $sig \
-            -keyout "$hybrid_cert_dir/${sig}_CA.key" $PROV_ARGS \
-            -out "$hybrid_cert_dir/${sig}_CA.crt" \
+            -keyout "$hybrid_cert_dir/${sig}_srv.key" \
+            -out "$hybrid_cert_dir/${sig}_srv.crt" \
             -nodes \
-            -subj "/CN=oqstest $sig CA" \
+            -subj "/CN=oqstest $sig selfsigned" \
             -days 365 \
             -config "$openssl_path/openssl.cnf" \
             -provider default \
             -provider oqsprovider \
             -provider-path "$provider_path"
-
-        # Generate the server certificate signing request for the current Hybrid-PQC signature algorithm
-        "$openssl_path/bin/openssl" req \
-            -new \
-            -newkey $sig \
-            -keyout "$hybrid_cert_dir/${sig}_srv.key" \
-            -out "$hybrid_cert_dir/${sig}_srv.csr" \
-            -nodes \
-            -subj "/CN=oqstest $sig server" \
-            -config "$openssl_path/openssl.cnf" \
-            -provider default \
-            -provider oqsprovider \
-            -provider-path "$provider_path"
-
-        # Sign the server CSR using the Hybrid-PQC CA certificate and key
-        "$openssl_path/bin/openssl" x509 \
-            -req \
-            -in "$hybrid_cert_dir/${sig}_srv.csr" \
-            -out "$hybrid_cert_dir/${sig}_srv.crt" \
-            -CA "$hybrid_cert_dir/${sig}_CA.crt" \
-            -CAkey "$hybrid_cert_dir/${sig}_CA.key" \
-            -CAcreateserial -days 365 \
-            -provider default \
-            -provider oqsprovider \
-            -provider-path "$provider_path"
-
-        # Remove the server CSR file
-        rm -f "$hybrid_cert_dir/${sig}_srv.csr"
 
     done
 
