@@ -20,7 +20,7 @@ function setup_base_env() {
     # Try and find the .dir_marker.tmp file to determine the project's root directory
     current_dir="$script_dir"
 
-    # Continue moving up the directory tree until the .pqc_eval_dir_marker.tmp file is found
+    # Continue moving up the directory tree until the .pqc_leo_dir_marker.tmp file is found
     while true; do
 
         # Check if the .pqc_leo_dir_marker.tmp file is present
@@ -97,6 +97,7 @@ function setup_base_env() {
 }
 
 #-------------------------------------------------------------------------------------------------------------------------------
+
 function classic_keygen() {
     # Function for generating cross-signed certificate chains for Classic TLS (RSA/ECC).
     # Scenario 3:
@@ -424,61 +425,120 @@ function pqc_keygen() {
     done
 }
 
+function hybrid_keygen() {
+    # Function for generating cross-signed Hybrid-PQC certificate chains for TLS benchmarking.
+    # Scenario:
+    #  - RootA (not trusted by client)
+    #  - RootB (trusted by client)
+    #  - RootA is cross-signed by RootB
+    #  - IntermediateA is issued by RootA
+    #  - Server is issued by IntermediateA
+    #  => Server sends: srv.crt + IntermediateA.crt + RootA_cross_by_RootB.crt
+    #  => Client trusts only RootB.crt
 
-#-------------------------------------------------------------------------------------------------------------------------------
-function hybrid_pqc_keygen() {
-    # Function for generating server certificates and private keys required for Hybrid-PQC TLS handshake benchmarking tests.
-    # This includes creating CA certificates, server certificate signing requests, and signed server certificates using Hybrid-PQC
-    # digital signature algorithms supported both natively in OpenSSL and integrated into OpenSSL via the OQS-Provider.
-
-    # Loop through the Hybrid-PQC digital signature to generate the CA/server certs and private-key files
     for sig in "${hybrid_sig_algs[@]}"; do
+        sig_name="${sig//[:\/]/_}"
 
-        # Generate the CA certificate and private key for the current Hybrid-PQC signature algorithm
-        "$openssl_path/bin/openssl" req \
-            -x509 \
-            -new \
-            -newkey $sig \
-            -keyout "$hybrid_cert_dir/${sig}_CA.key" $PROV_ARGS \
-            -out "$hybrid_cert_dir/${sig}_CA.crt" \
-            -nodes \
-            -subj "/CN=oqstest $sig CA" \
+        echo "[INFO] Generating Hybrid-PQC cross-signed chain for $sig_name"
+
+        # === 1. Root A (untrusted) ===
+        "$openssl_path/bin/openssl" req -new -newkey "$sig" -nodes \
+            -keyout "$hybrid_cert_dir/${sig_name}_RootA.key" \
+            -out "$hybrid_cert_dir/${sig_name}_RootA.csr" \
+            -subj "/CN=RootA $sig Hybrid CA" \
+            -config "$openssl_path/openssl.cnf" \
+            -provider default -provider oqsprovider -provider-path "$provider_path" || {
+            echo "[ERROR] Failed to create RootA CSR for $sig_name"
+            continue
+        }
+
+        # Self-sign RootA
+        "$openssl_path/bin/openssl" x509 -req \
+            -in "$hybrid_cert_dir/${sig_name}_RootA.csr" \
+            -signkey "$hybrid_cert_dir/${sig_name}_RootA.key" \
+            -out "$hybrid_cert_dir/${sig_name}_RootA.crt" \
             -days 365 \
-            -config "$openssl_path/openssl.cnf" \
-            -provider default \
-            -provider oqsprovider \
-            -provider-path "$provider_path"
+            -provider default -provider oqsprovider -provider-path "$provider_path" || {
+            echo "[ERROR] Failed to self-sign RootA for $sig_name"
+            continue
+        }
 
-        # Generate the server certificate signing request for the current Hybrid-PQC signature algorithm
-        "$openssl_path/bin/openssl" req \
-            -new \
-            -newkey $sig \
-            -keyout "$hybrid_cert_dir/${sig}_srv.key" \
-            -out "$hybrid_cert_dir/${sig}_srv.csr" \
-            -nodes \
-            -subj "/CN=oqstest $sig server" \
+        # === 2. Root B (trusted) ===
+        "$openssl_path/bin/openssl" req -x509 -new -newkey "$sig" -nodes \
+            -keyout "$hybrid_cert_dir/${sig_name}_RootB.key" \
+            -out "$hybrid_cert_dir/${sig_name}_RootB.crt" \
+            -subj "/CN=RootB $sig Hybrid CA" -days 365 \
             -config "$openssl_path/openssl.cnf" \
-            -provider default \
-            -provider oqsprovider \
-            -provider-path "$provider_path"
+            -provider default -provider oqsprovider -provider-path "$provider_path" || {
+            echo "[ERROR] Failed to create RootB for $sig_name"
+            continue
+        }
 
-        # Sign the server CSR using the Hybrid-PQC CA certificate and key
-        "$openssl_path/bin/openssl" x509 \
-            -req \
-            -in "$hybrid_cert_dir/${sig}_srv.csr" \
-            -out "$hybrid_cert_dir/${sig}_srv.crt" \
-            -CA "$hybrid_cert_dir/${sig}_CA.crt" \
-            -CAkey "$hybrid_cert_dir/${sig}_CA.key" \
+        # === 3. RootB cross-signs RootA ===
+        "$openssl_path/bin/openssl" x509 -req \
+            -in "$hybrid_cert_dir/${sig_name}_RootA.csr" \
+            -out "$hybrid_cert_dir/${sig_name}_RootA_cross_by_RootB.crt" \
+            -CA "$hybrid_cert_dir/${sig_name}_RootB.crt" \
+            -CAkey "$hybrid_cert_dir/${sig_name}_RootB.key" \
             -CAcreateserial -days 365 \
-            -provider default \
-            -provider oqsprovider \
-            -provider-path "$provider_path"
+            -provider default -provider oqsprovider -provider-path "$provider_path" || {
+            echo "[ERROR] Failed to cross-sign RootA by RootB for $sig_name"
+            continue
+        }
 
-        # Remove the server CSR file
-        rm -f "$hybrid_cert_dir/${sig}_srv.csr"
+        rm -f "$hybrid_cert_dir/${sig_name}_RootA.csr"
 
+        # === 4. IntermediateA signed by RootA ===
+        "$openssl_path/bin/openssl" req -new -newkey "$sig" -nodes \
+            -keyout "$hybrid_cert_dir/${sig_name}_IntermediateA.key" \
+            -out "$hybrid_cert_dir/${sig_name}_IntermediateA.csr" \
+            -subj "/CN=IntermediateA $sig Hybrid" \
+            -config "$openssl_path/openssl.cnf" \
+            -provider default -provider oqsprovider -provider-path "$provider_path"
+
+        "$openssl_path/bin/openssl" x509 -req \
+            -in "$hybrid_cert_dir/${sig_name}_IntermediateA.csr" \
+            -out "$hybrid_cert_dir/${sig_name}_IntermediateA.crt" \
+            -CA "$hybrid_cert_dir/${sig_name}_RootA.crt" \
+            -CAkey "$hybrid_cert_dir/${sig_name}_RootA.key" \
+            -CAcreateserial -days 365 \
+            -provider default -provider oqsprovider -provider-path "$provider_path"
+
+        rm -f "$hybrid_cert_dir/${sig_name}_IntermediateA.csr"
+
+        # === 5. Server signed by IntermediateA ===
+        "$openssl_path/bin/openssl" req -new -newkey "$sig" -nodes \
+            -keyout "$hybrid_cert_dir/${sig_name}_srv.key" \
+            -out "$hybrid_cert_dir/${sig_name}_srv.csr" \
+            -subj "/CN=Server $sig Hybrid" \
+            -config "$openssl_path/openssl.cnf" \
+            -provider default -provider oqsprovider -provider-path "$provider_path"
+
+        "$openssl_path/bin/openssl" x509 -req \
+            -in "$hybrid_cert_dir/${sig_name}_srv.csr" \
+            -out "$hybrid_cert_dir/${sig_name}_srv.crt" \
+            -CA "$hybrid_cert_dir/${sig_name}_IntermediateA.crt" \
+            -CAkey "$hybrid_cert_dir/${sig_name}_IntermediateA.key" \
+            -CAcreateserial -days 365 \
+            -provider default -provider oqsprovider -provider-path "$provider_path"
+
+        rm -f "$hybrid_cert_dir/${sig_name}_srv.csr"
+
+        # === 6. Build full chain ===
+        if [ ! -f "$hybrid_cert_dir/${sig_name}_RootA_cross_by_RootB.crt" ]; then
+            echo "[ERROR] Cross-signed certificate missing for $sig_name"
+            continue
+        fi
+
+        cat \
+            "$hybrid_cert_dir/${sig_name}_srv.crt" \
+            "$hybrid_cert_dir/${sig_name}_IntermediateA.crt" \
+            "$hybrid_cert_dir/${sig_name}_RootA_cross_by_RootB.crt" \
+            > "$hybrid_cert_dir/${sig_name}_server_chain.crt"
+
+        echo "[OK]  Chain ready: ${sig_name}_server_chain.crt"
+        echo "     Client trust anchor: ${sig_name}_RootB.crt"
     done
-
 }
 
 #-------------------------------------------------------------------------------------------------------------------------------
@@ -488,7 +548,7 @@ function main() {
 
     # Output the welcome message to the terminal
     echo "#########################################################"
-    echo "PQC-Evaluation-Tools - TLS Certificate & Key Generator"
+    echo "PQC-LEO - TLS Certificate & Key Generator"
     echo "Classic | PQC | Hybrid-PQC (OpenSSL 3.5.0 + OQS-Provider)"
     echo -e "#########################################################\n"
 
