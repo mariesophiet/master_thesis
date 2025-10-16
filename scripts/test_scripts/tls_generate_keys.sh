@@ -155,7 +155,7 @@ function classic_keygen() {
             -CAkey "$classic_cert_dir/${sig_name}_rootCA.key" \
             -CAcreateserial -days 365
 
-        rm -f "$classic_cert_dir/${sig_name}_intCA.csr"
+        rm -f "$classic_cert_dir/${sig_name}_intCA.csr"<
 
         # === 3. Server certificate ===
         if [[ $sig == RSA:* ]]; then
@@ -261,55 +261,64 @@ function pqc_keygen() {
 
 #-------------------------------------------------------------------------------------------------------------------------------
 function hybrid_pqc_keygen() {
-    # Function for generating server certificates and private keys required for Hybrid-PQC TLS handshake benchmarking tests.
-    # This includes creating CA certificates, server certificate signing requests, and signed server certificates using Hybrid-PQC
-    # digital signature algorithms supported both natively in OpenSSL and integrated into OpenSSL via the OQS-Provider.
+    # Function for generating standard Hybrid-PQC certificate chains.
+    # Scenario 2: Root -> Intermediate -> Server
+    # Client Truststore = Root.crt
+    # Server sends: srv.crt + intCA.crt
 
-    # Loop through the Hybrid-PQC digital signature to generate the CA/server certs and private-key files
     for sig in "${hybrid_sig_algs[@]}"; do
+        echo "[INFO] - Generating certificate chain for Hybrid-PQC algorithm: $sig"
 
-        # Generate the CA certificate and private key for the current Hybrid-PQC signature algorithm
-        "$openssl_path/bin/openssl" req \
-            -x509 \
-            -new \
-            -newkey $sig \
-            -keyout "$hybrid_cert_dir/${sig}_CA.key" $PROV_ARGS \
-            -out "$hybrid_cert_dir/${sig}_CA.crt" \
-            -nodes \
-            -subj "/CN=oqstest $sig CA" \
-            -days 365 \
+        # --- 1. Root CA ---
+        "$openssl_path/bin/openssl" req -x509 -new -newkey $sig \
+            -keyout "$hybrid_cert_dir/${sig}_rootCA.key" \
+            -out "$hybrid_cert_dir/${sig}_rootCA.crt" \
+            -nodes -subj "/CN=oqstest $sig Root CA" -days 365 \
             -config "$openssl_path/openssl.cnf" \
-            -provider default \
-            -provider oqsprovider \
-            -provider-path "$provider_path"
+            -provider default -provider oqsprovider -provider-path "$provider_path"
 
-        # Generate the server certificate signing request for the current Hybrid-PQC signature algorithm
-        "$openssl_path/bin/openssl" req \
-            -new \
-            -newkey $sig \
+        # --- 2. Intermediate CA ---
+        "$openssl_path/bin/openssl" req -new -newkey $sig \
+            -keyout "$hybrid_cert_dir/${sig}_intCA.key" \
+            -out "$hybrid_cert_dir/${sig}_intCA.csr" \
+            -nodes -subj "/CN=oqstest $sig Intermediate CA" \
+            -config "$openssl_path/openssl.cnf" \
+            -provider default -provider oqsprovider -provider-path "$provider_path"
+
+        "$openssl_path/bin/openssl" x509 -req \
+            -in "$hybrid_cert_dir/${sig}_intCA.csr" \
+            -out "$hybrid_cert_dir/${sig}_intCA.crt" \
+            -CA "$hybrid_cert_dir/${sig}_rootCA.crt" \
+            -CAkey "$hybrid_cert_dir/${sig}_rootCA.key" \
+            -CAcreateserial -days 365 \
+            -provider default -provider oqsprovider -provider-path "$provider_path"
+
+        rm -f "$hybrid_cert_dir/${sig}_intCA.csr"
+
+        # --- 3. Server certificate ---
+        "$openssl_path/bin/openssl" req -new -newkey $sig \
             -keyout "$hybrid_cert_dir/${sig}_srv.key" \
             -out "$hybrid_cert_dir/${sig}_srv.csr" \
-            -nodes \
-            -subj "/CN=oqstest $sig server" \
+            -nodes -subj "/CN=oqstest $sig server" \
             -config "$openssl_path/openssl.cnf" \
-            -provider default \
-            -provider oqsprovider \
-            -provider-path "$provider_path"
+            -provider default -provider oqsprovider -provider-path "$provider_path"
 
-        # Sign the server CSR using the Hybrid-PQC CA certificate and key
-        "$openssl_path/bin/openssl" x509 \
-            -req \
+        "$openssl_path/bin/openssl" x509 -req \
             -in "$hybrid_cert_dir/${sig}_srv.csr" \
             -out "$hybrid_cert_dir/${sig}_srv.crt" \
-            -CA "$hybrid_cert_dir/${sig}_CA.crt" \
-            -CAkey "$hybrid_cert_dir/${sig}_CA.key" \
+            -CA "$hybrid_cert_dir/${sig}_intCA.crt" \
+            -CAkey "$hybrid_cert_dir/${sig}_intCA.key" \
             -CAcreateserial -days 365 \
-            -provider default \
-            -provider oqsprovider \
-            -provider-path "$provider_path"
+            -provider default -provider oqsprovider -provider-path "$provider_path"
 
-        # Remove the server CSR file
         rm -f "$hybrid_cert_dir/${sig}_srv.csr"
+
+        # --- 4. Build combined chain for the server ---
+        cat "$hybrid_cert_dir/${sig}_srv.crt" \
+            "$hybrid_cert_dir/${sig}_intCA.crt" > "$hybrid_cert_dir/${sig}_srv_chain.crt"
+
+        echo "[INFO] - Chain ready: ${sig}_srv_chain.crt (srv + intCA)"
+        echo "[INFO] - Client Truststore should contain: ${sig}_rootCA.crt"
 
     done
 
