@@ -155,7 +155,7 @@ function classic_keygen() {
             -CAkey "$classic_cert_dir/${sig_name}_rootCA.key" \
             -CAcreateserial -days 365
 
-        rm -f "$classic_cert_dir/${sig_name}_intCA.csr"<
+        rm -f "$classic_cert_dir/${sig_name}_intCA.csr"
 
         # === 3. Server certificate ===
         if [[ $sig == RSA:* ]]; then
