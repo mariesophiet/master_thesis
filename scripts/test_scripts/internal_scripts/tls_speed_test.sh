@@ -169,8 +169,15 @@ function tls_speed_test() {
             else
                 rm -rf "$error_log_file"
             fi
+            echo "timeout for 3 min"
+            sleep 180
+            echo "resuming run"
+        
 
         done
+        echo "timeout for 5 min"
+        sleep 300
+        echo "resuming run"
 
     done
 
