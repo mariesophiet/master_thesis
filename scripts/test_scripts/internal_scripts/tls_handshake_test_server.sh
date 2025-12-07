@@ -367,6 +367,8 @@ function pqc_tests() {
 
             done
 
+            sleep 29
+
         done
 
     done
@@ -470,6 +472,8 @@ function classic_tests() {
                 fi
 
             done
+
+            sleep 29
 
         done
 
