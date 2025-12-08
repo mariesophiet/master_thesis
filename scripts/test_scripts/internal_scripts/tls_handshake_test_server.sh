@@ -59,6 +59,30 @@ function setup_base_env() {
     classic_cert_dir="$key_storage_path/classic"
     hybrid_cert_dir="$key_storage_path/hybrid"
 
+
+    # Set the result directory paths based on the assigned machine-ID for results
+    export MACHINE_RESULTS_PATH="$test_data_dir/up_results/tls_performance/machine_1"
+    export MACHINE_HANDSHAKE_RESULTS="$MACHINE_RESULTS_PATH/handshake_results"
+    export MACHINE_SPEED_RESULTS="$MACHINE_RESULTS_PATH/speed_results"
+    export TRAFFIC_DATA="$MACHINE_RESULTS_PATH/traffic"
+
+    export SERVER_IP="127.0.0.1"
+
+    # Set the specific test types' result directory paths
+    export PQC_HANDSHAKE="$MACHINE_HANDSHAKE_RESULTS/pqc"
+    export CLASSIC_HANDSHAKE="$MACHINE_HANDSHAKE_RESULTS/classic"
+    export HYBRID_HANDSHAKE="$MACHINE_HANDSHAKE_RESULTS/hybrid"
+    export PQC_SPEED="$MACHINE_SPEED_RESULTS/pqc"
+    export HYBRID_SPEED="$MACHINE_SPEED_RESULTS/hybrid"
+    export TRAFFIC_PQC="$TRAFFIC_DATA/pqc"
+    export TRAFFIC_CLASSIC="$TRAFFIC_DATA/classic"
+    export TRAFFIC_HYBRID="$TRAFFIC_DATA/hybrid"
+
+
+
+
+
+
     # Declare global test flags
     test_type=0 #0=pqc, 1=hybrid, 2=classic
 
@@ -319,12 +343,18 @@ function pqc_tests() {
                 if [ "$test_type" -eq 0 ]; then
                     cert_file="$pqc_cert_dir/""${sig/:/_}""_srv_chain.crt"
                     key_file="$pqc_cert_dir/""${sig/:/_}""_srv.key"
+                    handshake_dir=$TRAFFIC_PQC
 
                 elif [ "$test_type" -eq 1 ]; then
                     cert_file="$hybrid_cert_dir/""${sig/:/_}""_srv_chain.crt"
                     key_file="$hybrid_cert_dir/""${sig/:/_}""_srv.key"
+                    handshake_dir=$TRAFFIC_HYBRID
                 fi
 
+                keylog_file="$handshake_dir/keylog_${run_num}_${sig_name}_${kem}.txt"
+                pcap_file="pcap_${run_num}_${sig_name}_${kem}.pcap"
+                echo "$keylog_file"
+                touch "$keylog_file"
                 # Start the OpenSSL s_server process
                 "$openssl_path/bin/openssl" s_server \
                     -cert  "$cert_file" \
@@ -332,6 +362,7 @@ function pqc_tests() {
                     -provider default \
                     -provider oqsprovider \
                     -provider-path "$provider_path" \
+                    -keylogfile "$keylog_file" \
                     -www \
                     -tls1_3 \
                     -groups "$kem" \
@@ -342,6 +373,14 @@ function pqc_tests() {
                 until netstat -tuln | grep ":$S_SERVER_PORT" > /dev/null; do
                     :
                 done
+                echo "find iface, sever ip: $SERVER_IP"
+                IFACE="$(ip route get "$SERVER_IP" | awk '{print $5; exit}')"
+                echo "start tcpdump"
+                sudo tcpdump -i lo -U -w "$handshake_dir/$pcap_file" host "$SERVER_IP" and tcp port "$S_SERVER_PORT" & cap_pid=$!
+                echo "tcp dump started"
+
+
+                #start tcp dump to pcap file
 
                 # Send the ready signal to the client
                 control_signal "control_send" "ready"
@@ -351,7 +390,10 @@ function pqc_tests() {
 
                 # Check if the test status signal received from the client is complete or failed
                 if [ $signal_message == "complete" ]; then
-
+                    
+                    #first kill tcpdump
+                    sudo kill "$cap_pid" || true
+                    wait "$cap_pid" 2>/dev/null || true
                     # Successful completion of the test from the client
                     kill $server_pid
                     break
@@ -360,6 +402,9 @@ function pqc_tests() {
 
                     # Restart sig/kem combination if a failed signal is received from the client
                     echo "[ERROR] - 3000 failed attempts signal received from client, restarting sig/kem combination"
+                    #first kill tcpdump
+                    sudo kill "$cap_pid" || true
+                    wait "$cap_pid" 2>/dev/null || true
                     kill $server_pid
                     sleep 2
 
@@ -486,10 +531,11 @@ function tls_server_test_entrypoint() {
     # Main entry point for the server-side TLS handshake testing script.
     # Coordinates setup, connection to the server, and execution of PQC, Hybrid-PQC, and Classic handshake tests
     # over a specified number of runs. Ensures the test environment is configured and handles control signalling.
-
+    echo $TRAFFIC_PQC
     # Setup the base environment for the test suite
     setup_base_env
     clear
+    
 
     # Check if custom ports have been used and if so, outputting a warning message
     if [ "$SERVER_CONTROL_PORT" != "25000" ] || [ "$CLIENT_CONTROL_PORT" != "25001" ] || [ "$S_SERVER_PORT" != "4433" ]; then
@@ -498,6 +544,7 @@ function tls_server_test_entrypoint() {
         echo "Please ensure that the client is passed the flags for any custom TCP port values"
         echo -e "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n"
     fi
+    echo "traffic pqc: $TRAFFIC_PQC"
 
     # Output the waiting message and begin the initial handshake
     echo -e "Server Script Activated, waiting for connection from client..."

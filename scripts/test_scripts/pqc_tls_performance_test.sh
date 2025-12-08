@@ -477,6 +477,7 @@ function set_tls_paths() {
     export MACHINE_RESULTS_PATH="$test_data_dir/up_results/tls_performance/machine_$MACHINE_NUM"
     export MACHINE_HANDSHAKE_RESULTS="$MACHINE_RESULTS_PATH/handshake_results"
     export MACHINE_SPEED_RESULTS="$MACHINE_RESULTS_PATH/speed_results"
+    export TRAFFIC_DATA="$MACHINE_RESULTS_PATH/traffic"
 
     # Set the specific test types' result directory paths
     export PQC_HANDSHAKE="$MACHINE_HANDSHAKE_RESULTS/pqc"
@@ -484,9 +485,12 @@ function set_tls_paths() {
     export HYBRID_HANDSHAKE="$MACHINE_HANDSHAKE_RESULTS/hybrid"
     export PQC_SPEED="$MACHINE_SPEED_RESULTS/pqc"
     export HYBRID_SPEED="$MACHINE_SPEED_RESULTS/hybrid"
+    export TRAFFIC_PQC="$TRAFFIC_DATA/pqc"
+    export TRAFFIC_CLASSIC="$TRAFFIC_DATA/classic"
+    export TRAFFIC_HYBRID="$TRAFFIC_DATA/hybrid"
 
     # Declare the results directory paths array
-    result_dir_paths=("$PQC_HANDSHAKE" "$CLASSIC_HANDSHAKE" "$HYBRID_HANDSHAKE" "$PQC_SPEED" "$HYBRID_SPEED")
+    result_dir_paths=("$PQC_HANDSHAKE" "$CLASSIC_HANDSHAKE" "$HYBRID_HANDSHAKE" "$PQC_SPEED" "$HYBRID_SPEED" "$TRAFFIC_PQC" "$TRAFFIC_CLASSIC" "$TRAFFIC_HYBRID")
 
 }
 
@@ -498,6 +502,7 @@ function clean_environment() {
     unset MACHINE_RESULTS_PATH
     unset MACHINE_HANDSHAKE_RESULTS
     unset MACHINE_SPEED_RESULTS
+    unset TRAFFIC_DATA
 
     # Clear the test parameter variables
     unset MACHINE_NUM
@@ -920,6 +925,8 @@ function run_tests() {
 
         # Export the client IP to the environment
         export CLIENT_IP="$machine_ip"
+
+        echo $TRAFFIC_PQC
 
         # Call the server machine test script
         $tls_handshake_server
