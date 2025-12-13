@@ -169,6 +169,7 @@ function tls_speed_test() {
             else
                 rm -rf "$error_log_file"
             fi
+            sleep 20
 
         done
 
