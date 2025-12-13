@@ -101,6 +101,8 @@ PQ_ALGOS = [
     "sphincssha2128fsimple", "sphincssha2128ssimple"
 ]
 
+PQC_KEM = "MLKEM1024"
+
 def plot1_pqc():
     """
     Plottet einen Boxplot der TLS-Handshakes für Post-Quantum-Signaturalgorithmen.
@@ -124,6 +126,7 @@ def plot1_pqc():
 
     data = pd.concat(dfs, ignore_index=True)
     data = data[data["Reused Session ID"].isna()]
+    data = data[data["KEM Algorithm"] == PQC_KEM]
 
     y_col = "Connections in Real Time"
 
@@ -141,7 +144,7 @@ def plot1_pqc():
         showfliers=True
     )
 
-    plt.title("TLS-Handshake-Durchsatz (Post-Quantum-Signaturen)")
+    plt.title("TLS-Handshake-Durchsatz (Post-Quantum-Signaturen, {PQC_KEM})")
     plt.suptitle("")
     plt.xlabel("Signaturalgorithmus")
     plt.ylabel("Abgeschlossene TLS-Handshakes in 61 s (Realzeit)")
@@ -175,6 +178,7 @@ SAVE_PATH_FALCON = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit
 DILITHIUM_ALGOS = ["MLDSA44", "MLDSA65"]
 FALCON_ALGOS = ["falcon512", "falcon1024"]
 
+
 def plot_algo_comparison(algos, save_path, title):
     """
     Erstellt einen Boxplot zum Vergleich ausgewählter Post-Quantum-Signaturalgorithmen.
@@ -198,6 +202,7 @@ def plot_algo_comparison(algos, save_path, title):
 
     data = pd.concat(dfs, ignore_index=True)
     data = data[data["Reused Session ID"].isna()]
+    data = data[data["KEM Algorithm"] == PQC_KEM]
 
     y_col = "Connections in Real Time"
 
@@ -237,8 +242,8 @@ def plot_algo_comparison(algos, save_path, title):
 
 
 def plot2_dilithium_falcon():
-    plot_algo_comparison(DILITHIUM_ALGOS, SAVE_PATH_DILITHIUM, "TLS-Handshake: Dilithium 2 vs 3")
-    plot_algo_comparison(FALCON_ALGOS, SAVE_PATH_FALCON, "TLS-Handshake: Falcon 512 vs 1024")
+    plot_algo_comparison(DILITHIUM_ALGOS, SAVE_PATH_DILITHIUM, "TLS-Handshake: Dilithium 2 vs 3 ({PQC_KEM})")
+    plot_algo_comparison(FALCON_ALGOS, SAVE_PATH_FALCON, "TLS-Handshake: Falcon 512 vs 1024 ({PQC_KEM})")
 
 
 ###### Hauptprogramm ######
