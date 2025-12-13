@@ -5,8 +5,21 @@ import matplotlib.pyplot as plt
 import matplotlib
 
 # Ordner der Benchmarks in Plot 1 und Plots 2
-BASE_FOLDER_PQ = Path(r"..\..\test_data\results\tls_performance\machine_1111\handshake_results\pqc")
-BASE_FOLDER_CLASSIC = Path(r"..\..\test_data\results\tls_performance\machine_1111\handshake_results\classic")
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+BASE_FOLDER_PQ = (
+    SCRIPT_DIR
+    / ".." / ".."
+    / "test_data" / "results" / "tls_performance"
+    / "machine_1111" / "handshake_results" / "pqc"
+).resolve()
+
+BASE_FOLDER_CLASSIC = (
+    SCRIPT_DIR
+    / ".." / ".."
+    / "test_data" / "results" / "tls_performance"
+    / "machine_1111" / "handshake_results" / "classic"
+).resolve()
 
 
 ###### Für Plot 1 #####
@@ -65,10 +78,10 @@ def plot1_classic():
     plt.xticks(rotation=30)
 
     # optionale Punkte für einzelne Runs
-    for algo in algo_order:
+    for i, algo in enumerate(algo_order, start=1):
         subset = df_sz1[df_sz1["Classic Algorithm"] == algo]
         plt.scatter(
-            [algo]*len(subset),
+            [i]*len(subset),
             subset[y_col],
             alpha=0.6,
             s=20
@@ -134,10 +147,10 @@ def plot1_pqc():
     plt.ylabel("Abgeschlossene TLS-Handshakes in 61 s (Realzeit)")
     plt.xticks(rotation=30)
 
-    for algo in PQ_ALGOS:
+    for i, algo in enumerate(PQ_ALGOS, start=1):
         subset = data[data["Signing Algorithm"] == algo]
         plt.scatter(
-            [algo]*len(subset),
+            [i]*len(subset),
             subset[y_col],
             alpha=0.6,
             s=20
@@ -208,9 +221,9 @@ def plot_algo_comparison(algos, save_path, title):
     plt.ylabel("Abgeschlossene TLS-Handshakes in 61 s (Realzeit)")
     plt.xticks(rotation=30)
 
-    for algo in algos:
+    for i, algo in enumerate(algos, start=1):
         subset = data[data["Signing Algorithm"] == algo]
-        plt.scatter([algo]*len(subset), subset[y_col], alpha=0.6, s=20)
+        plt.scatter([i]*len(subset), subset[y_col], alpha=0.6, s=20)
 
     plt.tight_layout()
     save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -231,8 +244,8 @@ def plot2_dilithium_falcon():
 ###### Hauptprogramm ######
 
 def main():
-    #plot1_classic()
-    #plot1_pqc()
+    plot1_classic()
+    plot1_pqc()
     plot2_dilithium_falcon()
 
 if __name__ == "__main__":
