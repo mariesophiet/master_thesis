@@ -202,7 +202,7 @@ def plot_algo_comparison(algos, save_path, title):
         showfliers=True
     )
 
-    plt.title(title)  # Titel kommt über Parameter – kann deutsch sein
+    plt.title(title)  
     plt.suptitle("")
     plt.xlabel("Signaturalgorithmus")
     plt.ylabel("Abgeschlossene TLS-Handshakes in 61 s (Realzeit)")
