@@ -351,8 +351,8 @@ function pqc_tests() {
                     handshake_dir=$TRAFFIC_HYBRID
                 fi
 
-                keylog_file="$handshake_dir/keylog_${run_num}_${sig_name}_${kem}.txt"
-                pcap_file="pcap_${run_num}_${sig_name}_${kem}.pcap"
+                keylog_file="$handshake_dir/keylog_${run_num}_${sig}_${kem}.txt"
+                pcap_file="pcap_${run_num}_${sig}_${kem}.pcap"
                 echo "$keylog_file"
                 touch "$keylog_file"
                 # Start the OpenSSL s_server process
