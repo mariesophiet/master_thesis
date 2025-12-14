@@ -459,11 +459,19 @@ function classic_tests() {
                     # Set the cert/key filenames for the current ECC algorithm
                     classic_cert_file="$classic_cert_dir/${classic_alg}_srv_chain.crt"
                     classic_key_file="$classic_cert_dir/${classic_alg}_srv.key"
+                    handshake_dir=$TRAFFIC_CLASSIC
+
+                    # Message Tracking: Create keylog and pcap files for sig/kem combination
+                    keylog_file="$handshake_dir/keylog_${run_num}_${cipher}_${classic_alg}.txt"
+                    pcap_file="pcap_${run_num}_${cipher}_${classic_alg}.pcap"
+                    echo "$keylog_file"
+                    touch "$keylog_file"
 
                     # Start the ECC test server processes
                     "$openssl_path/bin/openssl" s_server \
                         -cert $classic_cert_file \
                         -key $classic_key_file \
+                        -keylogfile "$keylog_file" \
                         -www \
                         -tls1_3 \
                         -named_curve $classic_alg \
@@ -471,21 +479,42 @@ function classic_tests() {
                         -accept $S_SERVER_PORT &
                     server_pid=$!
 
+                    echo "find iface, sever ip: $SERVER_IP"
+                    IFACE="$(ip route get "$SERVER_IP" | awk '{print $5; exit}')"
+                    echo "start tcpdump"
+                    sudo tcpdump -i lo -U -w "$handshake_dir/$pcap_file" host "$SERVER_IP" and tcp port "$S_SERVER_PORT" & cap_pid=$!
+                    echo "tcp dump started"
+
                 else
 
                     # Set the cert/key filenames for the current RSA algorithm
                     classic_cert_file="$classic_cert_dir/${classic_alg}_srv_chain.crt"
                     classic_key_file="$classic_cert_dir/${classic_alg}_srv.key"
+                    handshake_dir=$TRAFFIC_CLASSIC
+
+                    # Message Tracking: Create keylog and pcap files for sig/kem combination
+                    keylog_file="$handshake_dir/keylog_${run_num}_${cipher}_${classic_alg}.txt"
+                    pcap_file="pcap_${run_num}_${cipher}_${classic_alg}.pcap"
+                    echo "$keylog_file"
+                    touch "$keylog_file"
 
                     # Start the RSA test server processes
                     "$openssl_path/bin/openssl" s_server \
                         -cert $classic_cert_file \
                         -key $classic_key_file \
                         -www \
+                        -keylogfile "$keylog_file" \
                         -tls1_3 \
                         -ciphersuites $cipher \
                         -accept $S_SERVER_PORT &
                     server_pid=$!
+
+
+                    echo "find iface, sever ip: $SERVER_IP"
+                    IFACE="$(ip route get "$SERVER_IP" | awk '{print $5; exit}')"
+                    echo "start tcpdump"
+                    sudo tcpdump -i lo -U -w "$handshake_dir/$pcap_file" host "$SERVER_IP" and tcp port "$S_SERVER_PORT" & cap_pid=$!
+                    echo "tcp dump started"
 
                 fi
 
@@ -503,6 +532,9 @@ function classic_tests() {
                 # Check if the test status signal received from the client is complete or failed
                 if [ $signal_message == "complete" ]; then
 
+                    #first kill tcpdump
+                    sudo kill "$cap_pid" || true
+                    wait "$cap_pid" 2>/dev/null || true
                     # Successful completion of the test from the client
                     kill $server_pid
                     break
@@ -511,6 +543,9 @@ function classic_tests() {
 
                     # Restart the sig/cipher combination if the failed signal is received from the client
                     echo "[ERROR] - 3000 failed attempts signal received from client, restarting cipher/sig combination"
+                    #first kill tcpdump
+                    sudo kill "$cap_pid" || true
+                    wait "$cap_pid" 2>/dev/null || true
                     kill $server_pid
                     sleep 2
 
