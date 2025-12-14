@@ -59,6 +59,24 @@ function setup_base_env() {
     classic_cert_dir="$key_storage_path/classic"
     hybrid_cert_dir="$key_storage_path/hybrid"
 
+    # Set the result directory paths based on the assigned machine-ID for results
+    export MACHINE_RESULTS_PATH="$test_data_dir/up_results/tls_performance/machine_1"
+    export MACHINE_HANDSHAKE_RESULTS="$MACHINE_RESULTS_PATH/handshake_results"
+    export MACHINE_SPEED_RESULTS="$MACHINE_RESULTS_PATH/speed_results"
+    export TRAFFIC_DATA="$MACHINE_RESULTS_PATH/traffic"
+
+    export SERVER_IP="127.0.0.1"
+
+    # Set the specific test types' result directory paths
+    export PQC_HANDSHAKE="$MACHINE_HANDSHAKE_RESULTS/pqc"
+    export CLASSIC_HANDSHAKE="$MACHINE_HANDSHAKE_RESULTS/classic"
+    export HYBRID_HANDSHAKE="$MACHINE_HANDSHAKE_RESULTS/hybrid"
+    export PQC_SPEED="$MACHINE_SPEED_RESULTS/pqc"
+    export HYBRID_SPEED="$MACHINE_SPEED_RESULTS/hybrid"
+    export TRAFFIC_PQC="$TRAFFIC_DATA/pqc"
+    export TRAFFIC_CLASSIC="$TRAFFIC_DATA/classic"
+    export TRAFFIC_HYBRID="$TRAFFIC_DATA/hybrid"
+
     # Declare global test flags
     test_type=0 #0=pqc, 1=hybrid, 2=classic
 
@@ -319,11 +337,19 @@ function pqc_tests() {
                 if [ "$test_type" -eq 0 ]; then
                     cert_file="$pqc_cert_dir/""${sig/:/_}""_srv.crt"
                     key_file="$pqc_cert_dir/""${sig/:/_}""_srv.key"
+                    handshake_dir=$TRAFFIC_PQC
 
                 elif [ "$test_type" -eq 1 ]; then
                     cert_file="$hybrid_cert_dir/""${sig/:/_}""_srv.crt"
                     key_file="$hybrid_cert_dir/""${sig/:/_}""_srv.key"
+                    handshake_dir=$TRAFFIC_HYBRID
+
                 fi
+
+                keylog_file="$handshake_dir/keylog_${run_num}_${sig}_${kem}.txt"
+                pcap_file="pcap_${run_num}_${sig}_${kem}.pcap"
+                echo "$keylog_file"
+                touch "$keylog_file"
 
                 # Start the OpenSSL s_server process
                 "$openssl_path/bin/openssl" s_server \
@@ -333,6 +359,7 @@ function pqc_tests() {
                     -provider oqsprovider \
                     -provider-path "$provider_path" \
                     -www \
+                    -keylogfile "$keylog_file" \
                     -tls1_3 \
                     -groups "$kem" \
                     -accept "$S_SERVER_PORT" &
@@ -343,6 +370,12 @@ function pqc_tests() {
                     :
                 done
 
+                echo "find iface, sever ip: $SERVER_IP"
+                IFACE="$(ip route get "$SERVER_IP" | awk '{print $5; exit}')"
+                echo "start tcpdump"
+                sudo tcpdump -i lo -U -w "$handshake_dir/$pcap_file" host "$SERVER_IP" and tcp port "$S_SERVER_PORT" & cap_pid=$!
+                echo "tcp dump started"
+
                 # Send the ready signal to the client
                 control_signal "control_send" "ready"
 
@@ -352,12 +385,17 @@ function pqc_tests() {
                 # Check if the test status signal received from the client is complete or failed
                 if [ $signal_message == "complete" ]; then
 
+                    #first kill tcpdump
+                    sudo kill "$cap_pid" || true
+                    wait "$cap_pid" 2>/dev/null || true
                     # Successful completion of the test from the client
                     kill $server_pid
                     break
 
                 elif [ $signal_message == "failed" ]; then
-
+                    #first kill tcpdump
+                    sudo kill "$cap_pid" || true
+                    wait "$cap_pid" 2>/dev/null || true
                     # Restart sig/kem combination if a failed signal is received from the client
                     echo "[ERROR] - 3000 failed attempts signal received from client, restarting sig/kem combination"
                     kill $server_pid
@@ -413,12 +451,18 @@ function classic_tests() {
                     # Set the cert/key filenames for the current ECC algorithm
                     classic_cert_file="$classic_cert_dir/${classic_alg}_srv.crt"
                     classic_key_file="$classic_cert_dir/${classic_alg}_srv.key"
+                    handshake_dir=$TRAFFIC_CLASSIC
 
+                    keylog_file="$handshake_dir/keylog_${run_num}_${cipher}_${classic_alg}.txt"
+                    pcap_file="pcap_${run_num}_${cipher}_${classic_alg}.pcap"
+                    echo "$keylog_file"
+                    touch "$keylog_file"
                     # Start the ECC test server processes
                     "$openssl_path/bin/openssl" s_server \
                         -cert $classic_cert_file \
                         -key $classic_key_file \
                         -www \
+                        -keylogfile "$keylog_file" \
                         -tls1_3 \
                         -named_curve $classic_alg \
                         -ciphersuites "$cipher" \
@@ -430,12 +474,19 @@ function classic_tests() {
                     # Set the cert/key filenames for the current RSA algorithm
                     classic_cert_file="$classic_cert_dir/${classic_alg}_srv.crt"
                     classic_key_file="$classic_cert_dir/${classic_alg}_srv.key"
+                    handshake_dir=$TRAFFIC_CLASSIC
+
+                    keylog_file="$handshake_dir/keylog_${run_num}_${cipher}_${classic_alg}.txt"
+                    pcap_file="pcap_${run_num}_${cipher}_${classic_alg}.pcap"
+                    echo "$keylog_file"
+                    touch "$keylog_file"
 
                     # Start the RSA test server processes
                     "$openssl_path/bin/openssl" s_server \
                         -cert $classic_cert_file \
                         -key $classic_key_file \
                         -www \
+                        -keylogfile "$keylog_file" \
                         -tls1_3 \
                         -ciphersuites $cipher \
                         -accept $S_SERVER_PORT &
@@ -448,6 +499,12 @@ function classic_tests() {
                     :
                 done
 
+                echo "find iface, sever ip: $SERVER_IP"
+                IFACE="$(ip route get "$SERVER_IP" | awk '{print $5; exit}')"
+                echo "start tcpdump"
+                sudo tcpdump -i lo -U -w "$handshake_dir/$pcap_file" host "$SERVER_IP" and tcp port "$S_SERVER_PORT" & cap_pid=$!
+                echo "tcp dump started"
+
                 # Send the ready signal to the client and wait for the test status signal
                 control_signal "control_send" "ready"
 
@@ -456,13 +513,18 @@ function classic_tests() {
 
                 # Check if the test status signal received from the client is complete or failed
                 if [ $signal_message == "complete" ]; then
+                    #first kill tcpdump
+                    sudo kill "$cap_pid" || true
+                    wait "$cap_pid" 2>/dev/null || true
 
                     # Successful completion of the test from the client
                     kill $server_pid
                     break
 
                 elif [ $signal_message == "failed" ]; then
-
+                    #first kill tcpdump
+                    sudo kill "$cap_pid" || true
+                    wait "$cap_pid" 2>/dev/null || true
                     # Restart the sig/cipher combination if the failed signal is received from the client
                     echo "[ERROR] - 3000 failed attempts signal received from client, restarting cipher/sig combination"
                     kill $server_pid
