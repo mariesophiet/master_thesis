@@ -11,20 +11,21 @@ BASE_FOLDER_PQ = (
     SCRIPT_DIR
     / ".." / ".."
     / "test_data" / "results" / "tls_performance"
-    / "machine_1111" / "handshake_results" / "pqc"
+    / "machine_22222" / "handshake_results" / "pqc"
 ).resolve()
 
 BASE_FOLDER_CLASSIC = (
     SCRIPT_DIR
     / ".." / ".."
     / "test_data" / "results" / "tls_performance"
-    / "machine_1111" / "handshake_results" / "classic"
+    / "machine_22222" / "handshake_results" / "classic"
 ).resolve()
 
+SC = 2
 
 ###### Für Plot 1 #####
-SAVE_PATH_classic = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_classic.png")
-SAVE_PATH_pq = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_pq.png")
+SAVE_PATH_classic = Path(fr"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_{SC}\sc{SC}_plot1_classic.png")
+SAVE_PATH_pq = Path(fr"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_{SC}\sc{SC}_plot1_pq.png")
 
 ### Plot 1 Classic ###
 def plot1_classic():
@@ -71,7 +72,7 @@ def plot1_classic():
         showfliers=True
     )
 
-    plt.title(f"Sz1a: TLS-Handshake-Durchsatz ({cs}, klassische Signaturen)")
+    plt.title(f"TLS-Handshake-Durchsatz ({cs}, klassische Signaturen)")
     plt.suptitle("")
     plt.xlabel("Signaturalgorithmus")
     plt.ylabel("Abgeschlossene TLS-Handshakes in 61 s (Realzeit)")
@@ -144,7 +145,7 @@ def plot1_pqc():
         showfliers=True
     )
 
-    plt.title("TLS-Handshake-Durchsatz (Post-Quantum-Signaturen, {PQC_KEM})")
+    plt.title(f"TLS-Handshake-Durchsatz (Post-Quantum-Signaturen, {PQC_KEM})")    
     plt.suptitle("")
     plt.xlabel("Signaturalgorithmus")
     plt.ylabel("Abgeschlossene TLS-Handshakes in 61 s (Realzeit)")
@@ -172,8 +173,8 @@ def plot1_pqc():
 
 ######  Plots 2  ######
 
-SAVE_PATH_DILITHIUM = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot2_dilithium.png")
-SAVE_PATH_FALCON = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot2_falcon.png")
+SAVE_PATH_DILITHIUM = Path(fr"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_{SC}\sc{SC}_plot2_dilithium.png")
+SAVE_PATH_FALCON = Path(fr"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_{SC}\sc{SC}_plot2_falcon.png")
 
 DILITHIUM_ALGOS = ["MLDSA44", "MLDSA65"]
 FALCON_ALGOS = ["falcon512", "falcon1024"]
@@ -242,8 +243,8 @@ def plot_algo_comparison(algos, save_path, title):
 
 
 def plot2_dilithium_falcon():
-    plot_algo_comparison(DILITHIUM_ALGOS, SAVE_PATH_DILITHIUM, "TLS-Handshake: Dilithium 2 vs 3 ({PQC_KEM})")
-    plot_algo_comparison(FALCON_ALGOS, SAVE_PATH_FALCON, "TLS-Handshake: Falcon 512 vs 1024 ({PQC_KEM})")
+    plot_algo_comparison(DILITHIUM_ALGOS, SAVE_PATH_DILITHIUM, f"TLS-Handshake: Dilithium 2 vs 3 ({PQC_KEM})")
+    plot_algo_comparison(FALCON_ALGOS, SAVE_PATH_FALCON, f"TLS-Handshake: Falcon 512 vs 1024 ({PQC_KEM})")
 
 
 ###### Hauptprogramm ######
