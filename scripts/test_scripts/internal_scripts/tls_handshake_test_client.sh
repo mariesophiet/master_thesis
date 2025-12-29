@@ -389,6 +389,8 @@ function pqc_tests() {
 
             done
 
+            sleep 30
+
         done
 
     done
@@ -476,6 +478,8 @@ function classic_tests() {
 
             done
 
+            sleep 30
+
         done
 
     done
@@ -555,6 +559,9 @@ function tls_client_test_entrypoint() {
 
         # Output that the current run is complete
         echo "[OUTPUT] - All $run_num Testing Completed"
+        echo "timeout for 5 min"
+        sleep 310
+        echo "resuming run"
 
     done
 
