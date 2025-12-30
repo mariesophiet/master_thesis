@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # === CONFIG ===
-BASE_FOLDER="/mnt/c/Users/marie/pqc/test_data/up_results/tls_performance/machine_1/traffic"
+BASE_FOLDER="/mnt/c/Users/marie/pqc/test_data/up_results/tls_performance/machine_1_messagesizes_test/traffic"
 PCAP_DIR="$BASE_FOLDER/classic"
 OUTPUT_DIR="$PCAP_DIR/tls_stats"
 

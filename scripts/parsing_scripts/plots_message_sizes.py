@@ -50,6 +50,7 @@ BASE_FOLDER_STATS_CLASSIC = (
     / "machine_1_messagesizes_test" / "traffic" / "classic" / "tls_stats"
 )
 
+### HELPER FUNKTIONEN ###
 def load_cert_sizes_classic(stats_base_folder):
     rows = []
 
@@ -176,6 +177,8 @@ SAVE_PATH_SCATTER = Path(
     r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1"
     r"\sc1_certsize_vs_throughput_mlkem1024.png"
 )
+### ENDE HELPER ###
+
 
 def plot_certsize_vs_handshake_throughput():
     # PQ
@@ -198,17 +201,23 @@ def plot_certsize_vs_handshake_throughput():
         label="Post-Quantum Signaturen",
         alpha=0.8
     )
+    
 
     # Classic Punkte 
-    plt.scatter(
-        df_classic["Cert Size (KB)"],
-        df_classic["Median Handshake Throughput"],
-        s=90,
-        marker="s",
-        label="Klassische Signaturen",
-        alpha=0.8
-    )
+    for algo in CLASSIC_ALGOS:
+        df_algo = df_classic[df_classic["Signing Algorithm"] == algo]
+        if df_algo.empty:
+            continue
+        plt.plot(
+            df_algo["Cert Size (KB)"],
+            df_algo["Median Handshake Throughput"],
+            marker='s',
+            linestyle='--',
+            label=f"{algo} (Classic)"
+        )
 
+    
+    
     # Labels
     for _, row in df_pq.iterrows():
         plt.text(
@@ -240,7 +249,7 @@ def plot_certsize_vs_handshake_throughput():
 
     if matplotlib.get_backend() not in ["Agg", "PDF", "PS", "SVG", "Cairo"]:
         plt.show()
-
+    
 
 def main():
     plot_certsize_vs_handshake_throughput()
