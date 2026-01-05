@@ -223,7 +223,7 @@ def plot_algo_comparison(algos, save_path, title):
         ordered=True
     )
 
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(12, 6))
 
     data.boxplot(
         column=y_col,
