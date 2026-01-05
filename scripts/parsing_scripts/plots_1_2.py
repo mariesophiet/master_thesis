@@ -71,7 +71,7 @@ def plot1_classic():
         showfliers=True
     )
 
-    plt.title(f"Sz1a: TLS-Handshake-Durchsatz ({cs}, klassische Signaturen)")
+    plt.title(f"TLS-Handshake-Durchsatz klassisch ({cs})")
     plt.suptitle("")
     plt.xlabel("Signaturalgorithmus")
     plt.ylabel("Abgeschlossene TLS-Handshakes in 61 s (Realzeit)")
@@ -93,6 +93,15 @@ def plot1_classic():
     plt.savefig(SAVE_PATH_classic, dpi=300)
     print(f"Plot gespeichert unter: {SAVE_PATH_classic}")
 
+    # speichere das y-Achsen-Limitm, sodass pq mit der gleichen Skala geplottet wird
+    y_max = df_sz1[y_col].max()
+    y_lim = y_max * 1.05  # 5 % Puffer
+
+    plt.ylim(0, y_lim)
+    
+    return y_lim
+
+
 
 ### Plot 1 PQC ###
 PQ_ALGOS = [
@@ -103,7 +112,7 @@ PQ_ALGOS = [
 
 PQC_KEM = "MLKEM1024"
 
-def plot1_pqc():
+def plot1_pqc(y_lim):
     """
     Plottet einen Boxplot der TLS-Handshakes für Post-Quantum-Signaturalgorithmen.
     """
@@ -144,11 +153,13 @@ def plot1_pqc():
         showfliers=True
     )
 
-    plt.title("TLS-Handshake-Durchsatz (Post-Quantum-Signaturen, {PQC_KEM})")
+    plt.title(f"TLS-Handshake-Durchsatz post-quantum ({PQC_KEM})")
     plt.suptitle("")
     plt.xlabel("Signaturalgorithmus")
     plt.ylabel("Abgeschlossene TLS-Handshakes in 61 s (Realzeit)")
     plt.xticks(rotation=30)
+    # ylim soll wie bei klassichem Plot sein
+    plt.ylim(0, y_lim)
 
     for i, algo in enumerate(PQ_ALGOS, start=1):
         subset = data[data["Signing Algorithm"] == algo]
@@ -242,15 +253,15 @@ def plot_algo_comparison(algos, save_path, title):
 
 
 def plot2_dilithium_falcon():
-    plot_algo_comparison(DILITHIUM_ALGOS, SAVE_PATH_DILITHIUM, "TLS-Handshake: Dilithium 2 vs 3 ({PQC_KEM})")
-    plot_algo_comparison(FALCON_ALGOS, SAVE_PATH_FALCON, "TLS-Handshake: Falcon 512 vs 1024 ({PQC_KEM})")
+    plot_algo_comparison(DILITHIUM_ALGOS, SAVE_PATH_DILITHIUM, f"TLS-Handshake: Dilithium 2 vs 3 ({PQC_KEM})")
+    plot_algo_comparison(FALCON_ALGOS, SAVE_PATH_FALCON, f"TLS-Handshake: Falcon 512 vs 1024 ({PQC_KEM})")
 
 
 ###### Hauptprogramm ######
 
 def main():
-    plot1_classic()
-    plot1_pqc()
+    y_lim = plot1_classic()
+    plot1_pqc(y_lim)
     plot2_dilithium_falcon()
 
 if __name__ == "__main__":
