@@ -23,11 +23,14 @@ BASE_FOLDER_CLASSIC = (
 
 
 ###### Für Plot 1 #####
-SAVE_PATH_classic = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_classic.png")
-SAVE_PATH_pq = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_pq.png")
+SAVE_PATH_classic = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_classic_connections.png")
+SAVE_PATH_pq = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_pq_connections.png")
+SAVE_PATH_classic_user_time = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_classic_user_time.png")
+SAVE_PATH_pq_user_time = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_pq_user_time.png")
+
 
 ### Plot 1 Classic ###
-def plot1_classic():
+def plot1_classic(metric="connections"):
     """
     Plottet einen Boxplot der TLS-Handshakes für klassische Signaturalgorithmen.
     """ 
@@ -46,7 +49,23 @@ def plot1_classic():
     cs = "TLS_AES_128_GCM_SHA256"
     df_sz1 = data[data["Ciphersuite"] == cs].copy()
 
-    y_col = "Connections in Real Time"
+    # Filtern der Metrik
+    if metric == "connections":
+        y_col = "Connections in Real Time"
+        y_label = "Abgeschlossene TLS-Handshakes in 61 s (Realzeit)"
+        title_base = "TLS-Handshake-Durchsatz"
+
+    elif metric == "user_time":
+        df_sz1 = df_sz1.copy()
+        df_sz1["User Time per Handshake"] = (
+            df_sz1["User Time (s)"] / df_sz1["Connections in User Time"]
+        )
+        y_col = "User Time per Handshake"
+        y_label = "Median User Time pro TLS-Handshake [s]"
+        title_base = "Median User Time pro TLS-Handshake"
+
+    else:
+        raise ValueError(f"Unbekannte Metrik: {metric}")
 
     algo_order = [
         "RSA_2048",
@@ -71,10 +90,10 @@ def plot1_classic():
         showfliers=True
     )
 
-    plt.title(f"TLS-Handshake-Durchsatz klassisch ({cs})")
+    plt.title(f"{title_base} klassisch \n({cs})")    
     plt.suptitle("")
     plt.xlabel("Signaturalgorithmus")
-    plt.ylabel("Abgeschlossene TLS-Handshakes in 61 s (Realzeit)")
+    plt.ylabel(y_label)
     plt.xticks(rotation=30)
 
     # optionale Punkte für einzelne Runs
@@ -89,9 +108,14 @@ def plot1_classic():
 
     plt.tight_layout()
 
-    SAVE_PATH_classic.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(SAVE_PATH_classic, dpi=300)
-    print(f"Plot gespeichert unter: {SAVE_PATH_classic}")
+    if metric == "connections":
+        SAVE_PATH_classic.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(SAVE_PATH_classic, dpi=300)
+        print(f"Plot gespeichert unter: {SAVE_PATH_classic}")
+    elif metric == "user_time":
+        SAVE_PATH_classic_user_time.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(SAVE_PATH_classic_user_time, dpi=300)
+        print(f"Plot gespeichert unter: {SAVE_PATH_classic_user_time}")
 
     # speichere das y-Achsen-Limitm, sodass pq mit der gleichen Skala geplottet wird
     y_max = df_sz1[y_col].max()
@@ -112,7 +136,7 @@ PQ_ALGOS = [
 
 PQC_KEM = "MLKEM1024"
 
-def plot1_pqc(y_lim):
+def plot1_pqc(y_lim, metric="connections"):
     """
     Plottet einen Boxplot der TLS-Handshakes für Post-Quantum-Signaturalgorithmen.
     """
@@ -137,7 +161,24 @@ def plot1_pqc(y_lim):
     data = data[data["Reused Session ID"].isna()]
     data = data[data["KEM Algorithm"] == PQC_KEM]
 
-    y_col = "Connections in Real Time"
+    # Filtern der Metrik
+    if metric == "connections":
+        y_col = "Connections in Real Time"
+        y_label = "Abgeschlossene TLS-Handshakes in 61 s (Realzeit)"
+        title_base = "TLS-Handshake-Durchsatz"
+
+    elif metric == "user_time":
+        data = data.copy()
+        data["User Time per Handshake"] = (
+            data["User Time (s)"] / data["Connections in User Time"]
+        )
+        y_col = "User Time per Handshake"
+        y_label = "Median User Time pro TLS-Handshake [s]"
+        title_base = "Median User Time pro TLS-Handshake"
+
+    else:
+        raise ValueError(f"Unbekannte Metrik: {metric}")
+
 
     data["Signing Algorithm"] = pd.Categorical(
         data["Signing Algorithm"],
@@ -153,10 +194,10 @@ def plot1_pqc(y_lim):
         showfliers=True
     )
 
-    plt.title(f"TLS-Handshake-Durchsatz post-quantum ({PQC_KEM})")
+    plt.title(f"{title_base} post-quantum ({PQC_KEM})")
     plt.suptitle("")
     plt.xlabel("Signaturalgorithmus")
-    plt.ylabel("Abgeschlossene TLS-Handshakes in 61 s (Realzeit)")
+    plt.ylabel(y_label)
     plt.xticks(rotation=30)
     # ylim soll wie bei klassichem Plot sein
     plt.ylim(0, y_lim)
@@ -171,9 +212,14 @@ def plot1_pqc(y_lim):
         )
 
     plt.tight_layout()
-    SAVE_PATH_pq.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(SAVE_PATH_pq, dpi=300)
-    print(f"Plot gespeichert unter: {SAVE_PATH_pq}")
+    if metric == "connections":
+        SAVE_PATH_pq.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(SAVE_PATH_pq, dpi=300)
+        print(f"Plot gespeichert unter: {SAVE_PATH_pq}")
+    elif metric == "user_time":
+        SAVE_PATH_pq_user_time.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(SAVE_PATH_pq_user_time, dpi=300)
+        print(f"Plot gespeichert unter: {SAVE_PATH_pq_user_time}")
 
     if matplotlib.get_backend() not in ["Agg", "PDF", "PS", "SVG", "Cairo"]:
         plt.show()
@@ -260,9 +306,12 @@ def plot2_dilithium_falcon():
 ###### Hauptprogramm ######
 
 def main():
-    y_lim = plot1_classic()
-    plot1_pqc(y_lim)
-    plot2_dilithium_falcon()
+    y_lim = plot1_classic(metric="connections")
+    plot1_pqc(y_lim, metric="connections")
+    y_lim = plot1_classic(metric="user_time")
+    plot1_pqc(y_lim, metric="user_time")
+
+    #plot2_dilithium_falcon()
 
 if __name__ == "__main__":
     main()
