@@ -262,6 +262,84 @@ def plot1_pqc(y_lim, metric="connections"):
     else:
         print("Interaktives Anzeigen des Plots wird übersprungen.")
 
+######  Berechne Overhead Faktor = Real Time per HS / User Time per HS  ######
+
+def calculate_overhead_classic():
+    """
+    Berechnet den Overhead-Faktor (Real Time / User Time) pro Classic Algorithm
+    und speichert das Ergebnis als CSV.
+    """
+    files = sorted(glob.glob(str(BASE_FOLDER_CLASSIC / "classic_results_run_*.csv")))
+    dfs = []
+    for i, f in enumerate(files, start=1):
+        df = pd.read_csv(f)
+        df["run"] = i
+        dfs.append(df)
+
+    data = pd.concat(dfs, ignore_index=True)
+    data = data[data["Reused Session ID"].isna()]
+    cs = "TLS_AES_128_GCM_SHA256"
+    df_sz1 = data[data["Ciphersuite"] == cs].copy()
+
+    # User Time und Real Time per Handshake
+    df_sz1["User Time per Handshake"] = df_sz1["User Time (s)"] / df_sz1["Connections in User Time"]
+    df_sz1["Real Time per Handshake"] = df_sz1["Real Time (s)"] / df_sz1["Connections in Real Time"]
+
+    # Overhead-Faktor
+    df_sz1["Overhead Factor"] = df_sz1["Real Time per Handshake"] / df_sz1["User Time per Handshake"]
+
+    # Median pro Algorithmus
+    overhead_table = (
+        df_sz1.groupby("Classic Algorithm", as_index=False)
+        .agg(Median_Overhead=("Overhead Factor", "median"))
+    )
+
+    # Speichern
+    save_path = SAVE_PATH_classic_user_time.parent / "overhead_factor_classic.csv"
+    overhead_table.to_csv(save_path, index=False)
+    print(f"Overhead-Tabelle Classic gespeichert unter: {save_path}")
+    print(overhead_table)
+    return overhead_table
+
+
+def calculate_overhead_pqc():
+    """
+    Berechnet den Overhead-Faktor (Real Time / User Time) pro PQC Algorithm
+    und speichert das Ergebnis als CSV.
+    """
+    all_files = []
+    for algo in PQ_ALGOS:
+        files = glob.glob(str(BASE_FOLDER_PQ / algo / f"tls_handshake_{algo}_run_*.csv"))
+        all_files.extend(files)
+    
+    if not all_files:
+        print("Keine CSV-Dateien gefunden.")
+        return pd.DataFrame()
+
+    dfs = []
+    for i, f in enumerate(all_files, start=1):
+        df = pd.read_csv(f)
+        df["run"] = i
+        dfs.append(df)
+
+    data = pd.concat(dfs, ignore_index=True)
+    data = data[data["Reused Session ID"].isna()]
+    data = data[data["KEM Algorithm"] == PQC_KEM]
+
+    data["User Time per Handshake"] = data["User Time (s)"] / data["Connections in User Time"]
+    data["Real Time per Handshake"] = data["Real Time (s)"] / data["Connections in Real Time"]
+    data["Overhead Factor"] = data["Real Time per Handshake"] / data["User Time per Handshake"]
+
+    overhead_table = (
+        data.groupby("Signing Algorithm", as_index=False)
+        .agg(Median_Overhead=("Overhead Factor", "median"))
+    )
+
+    save_path = SAVE_PATH_pq_user_time.parent / "overhead_factor_pqc.csv"
+    overhead_table.to_csv(save_path, index=False)
+    print(f"Overhead-Tabelle PQC gespeichert unter: {save_path}")
+    print(overhead_table)
+    return overhead_table
 
 ######  Plots 2  ######
 
@@ -351,7 +429,11 @@ def main():
     # Real Time pro Handshake
     y_lim = plot1_classic(metric="real_time")
     plot1_pqc(y_lim, metric="real_time")
+    # Overhead-Faktor Tabellen
+    calculate_overhead_classic()
+    calculate_overhead_pqc()
     
+    # Vergleich der verschiedenen Dilithium und Falcon-Versionen
     #plot2_dilithium_falcon()
 
 if __name__ == "__main__":
