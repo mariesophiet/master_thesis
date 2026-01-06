@@ -25,8 +25,16 @@ BASE_FOLDER_CLASSIC = (
 ###### Für Plot 1 #####
 SAVE_PATH_classic = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_classic_connections.png")
 SAVE_PATH_pq = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_pq_connections.png")
+
 SAVE_PATH_classic_user_time = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_classic_user_time.png")
 SAVE_PATH_pq_user_time = Path(r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_pq_user_time.png")
+
+SAVE_PATH_classic_real_time = Path(
+    r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_classic_real_time.png"
+)
+SAVE_PATH_pq_real_time = Path(
+    r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Szenario_1\sc1_plot1_pq_real_time.png"
+)
 
 
 ### Plot 1 Classic ###
@@ -63,6 +71,15 @@ def plot1_classic(metric="connections"):
         y_col = "User Time per Handshake"
         y_label = "Median User Time pro TLS-Handshake [s]"
         title_base = "Median User Time pro TLS-Handshake"
+    elif metric == "real_time":
+        df_sz1 = df_sz1.copy()
+        df_sz1["Real Time per Handshake"] = (
+            df_sz1["Real Time (s)"] / df_sz1["Connections in Real Time"]
+        )
+        y_col = "Real Time per Handshake"
+        y_label = "Median Real Time pro TLS-Handshake [s]"
+        title_base = "Median Real Time pro TLS-Handshake"
+
 
     else:
         raise ValueError(f"Unbekannte Metrik: {metric}")
@@ -116,6 +133,11 @@ def plot1_classic(metric="connections"):
         SAVE_PATH_classic_user_time.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(SAVE_PATH_classic_user_time, dpi=300)
         print(f"Plot gespeichert unter: {SAVE_PATH_classic_user_time}")
+    elif metric == "real_time":
+        SAVE_PATH_classic_real_time.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(SAVE_PATH_classic_real_time, dpi=300)
+        print(f"Plot gespeichert unter: {SAVE_PATH_classic_real_time}")
+
 
     # speichere das y-Achsen-Limitm, sodass pq mit der gleichen Skala geplottet wird
     y_max = df_sz1[y_col].max()
@@ -175,6 +197,15 @@ def plot1_pqc(y_lim, metric="connections"):
         y_col = "User Time per Handshake"
         y_label = "Median User Time pro TLS-Handshake [s]"
         title_base = "Median User Time pro TLS-Handshake"
+    elif metric == "real_time":
+        data = data.copy()
+        data["Real Time per Handshake"] = (
+            data["Real Time (s)"] / data["Connections in Real Time"]
+        )
+        y_col = "Real Time per Handshake"
+        y_label = "Median Real Time pro TLS-Handshake [s]"
+        title_base = "Median Real Time pro TLS-Handshake"
+
 
     else:
         raise ValueError(f"Unbekannte Metrik: {metric}")
@@ -220,6 +251,11 @@ def plot1_pqc(y_lim, metric="connections"):
         SAVE_PATH_pq_user_time.parent.mkdir(parents=True, exist_ok=True)
         plt.savefig(SAVE_PATH_pq_user_time, dpi=300)
         print(f"Plot gespeichert unter: {SAVE_PATH_pq_user_time}")
+    elif metric == "real_time":
+        SAVE_PATH_pq_real_time.parent.mkdir(parents=True, exist_ok=True)
+        plt.savefig(SAVE_PATH_pq_real_time, dpi=300)
+        print(f"Plot gespeichert unter: {SAVE_PATH_pq_real_time}")
+
 
     if matplotlib.get_backend() not in ["Agg", "PDF", "PS", "SVG", "Cairo"]:
         plt.show()
@@ -306,11 +342,16 @@ def plot2_dilithium_falcon():
 ###### Hauptprogramm ######
 
 def main():
+    # Durchsatz
     y_lim = plot1_classic(metric="connections")
     plot1_pqc(y_lim, metric="connections")
+    # User Time pro Handshake
     y_lim = plot1_classic(metric="user_time")
     plot1_pqc(y_lim, metric="user_time")
-
+    # Real Time pro Handshake
+    y_lim = plot1_classic(metric="real_time")
+    plot1_pqc(y_lim, metric="real_time")
+    
     #plot2_dilithium_falcon()
 
 if __name__ == "__main__":
