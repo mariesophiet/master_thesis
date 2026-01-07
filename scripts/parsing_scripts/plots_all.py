@@ -357,6 +357,53 @@ def plot_median_real_time(show="mean"):
     else:
         print("Interaktives Anzeigen unterdrückt()")
 
+
+# ============================================================
+# CREATE TABLES WITH MEDIAN AND PERCENTUAL CHANGES
+# ============================================================
+
+def make_summary_table(data, value_name, filename_prefix):
+    """
+    data: DataFrame mit Spalten ['scenario','mode','algorithm','value']
+    value_name: z.B. 'Median User Time' oder 'Handshakes'
+    filename_prefix: Basisname für CSV-Datei
+    """
+    
+    summary = data.groupby(['scenario','mode','algorithm'], as_index=False)['value'].mean()
+    
+    # Pivot-Tabelle: Zeilen = Algorithmus, Spalten = Szenario
+    pivot = summary.pivot(index='algorithm', columns='scenario', values='value').sort_index()
+    
+    # Szenario 1 als Baseline
+    pivot['Change_S2'] = pivot[2] - pivot[1]
+    pivot['Change_S3'] = pivot[3] - pivot[1]
+    pivot['Change_S2_%'] = (pivot['Change_S2'] / pivot[1]) * 100
+    pivot['Change_S3_%'] = (pivot['Change_S3'] / pivot[1]) * 100
+    
+    # CSV speichern
+    csv_path = SAVE_PATH_SCATTER_SCENARIOS_MEAN.parent / f"{filename_prefix}_summary.csv"
+    pivot.to_csv(csv_path, float_format='%.3f')
+    print(f"\n[{value_name}] Tabelle gespeichert: {csv_path}\n")
+    
+    # Tabelle auf Kommandozeile ausgeben
+    print(f"--- {value_name} Übersicht ---")
+    print(pivot.round(3).to_string())
+    print("-"*50)
+
+def create_all_summary_tables():
+    # Handshakes in 61s
+    data_handshakes = collect_all_data().groupby(['scenario','mode','algorithm'], as_index=False).agg(value=('value','mean'))
+    make_summary_table(data_handshakes, "TLS-Handshakes", "handshakes")
+    
+    # Median User Time
+    data_user_time = collect_all_median_duration().groupby(['scenario','mode','algorithm'], as_index=False).agg(value=('value','median'))
+    make_summary_table(data_user_time, "Median User Time", "median_user_time")
+    
+    # Median Real Time
+    data_real_time = collect_all_median_real_time().groupby(['scenario','mode','algorithm'], as_index=False).agg(value=('value','median'))
+    make_summary_table(data_real_time, "Median Real Time", "median_real_time")
+
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -371,6 +418,9 @@ def main():
 
     ## Median Real Time
     plot_median_real_time(show="mean")
+
+    ## Tabellen mit Mittelwerten und Änderungen erstellen
+    create_all_summary_tables()
 
 if __name__ == "__main__":
     main()
