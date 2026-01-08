@@ -337,13 +337,17 @@ function pqc_tests() {
 
                     # Perform the testing until successful or the fail counter reaches its limit
                     while true; do
+                        "$openssl_path/bin/openssl" s_client -connect $SERVER_IP:$S_SERVER_PORT -showcerts -CAfile "$cert_file" -verify 5 \
+                        -provider default \
+                        -provider oqsprovider \
+                        -provider-path "$provider_path" > "$handshake_dir/$output_name"
 
                         # Run the OpenSSL s_time process with the current test parameters and grab the exit code
                         "$openssl_path/bin/openssl" s_time \
                             -connect "${SERVER_IP}:${S_SERVER_PORT}" \
                             -CAfile  "$cert_file" \
                             -time    "$TIME_NUM" \
-                            -verify  1 \
+                            -verify  5 \
                             -provider default \
                             -provider oqsprovider \
                             -provider-path "$provider_path" > "$handshake_dir/$output_name"
@@ -435,11 +439,13 @@ function classic_tests() {
                 # Perform the testing until successful or the fail counter reaches its limit
                 while true; do
 
+                    "$openssl_path/bin/openssl" s_client -connect $SERVER_IP:$S_SERVER_PORT -showcerts -CAfile $classic_cert_file -verify 3
+                    
                     # Run the OpenSSL s_time process with the current test parameters and grab the exit code
                     "$openssl_path/bin/openssl" s_time \
                         -connect $SERVER_IP:$S_SERVER_PORT \
                         -CAfile $classic_cert_file \
-                        -verify 1 \
+                        -verify 5 \
                         -time $TIME_NUM > "$CLASSIC_HANDSHAKE/$output_name"
                     exit_code=$?
 

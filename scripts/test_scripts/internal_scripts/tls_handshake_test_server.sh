@@ -317,17 +317,20 @@ function pqc_tests() {
 
                 # Set the cert and key files depending on the test type
                 if [ "$test_type" -eq 0 ]; then
-                    cert_file="$pqc_cert_dir/""${sig/:/_}""_server_chain.crt"
+                    cert_file="$pqc_cert_dir/""${sig/:/_}""_srv.crt"
+                    cert_chain="$pqc_cert_dir/""${sig/:/_}""_server_chain.crt"
                     key_file="$pqc_cert_dir/""${sig/:/_}""_srv.key"
 
                 elif [ "$test_type" -eq 1 ]; then
-                    cert_file="$hybrid_cert_dir/""${sig/:/_}""_server_chain.crt"
+                    cert_file="$hybrid_cert_dir/""${sig/:/_}""_srv.crt"
+                    cert_chain="$pqc_cert_dir/""${sig/:/_}""_server_chain.crt"
                     key_file="$hybrid_cert_dir/""${sig/:/_}""_srv.key"
                 fi
 
                 # Start the OpenSSL s_server process
                 "$openssl_path/bin/openssl" s_server \
                     -cert  "$cert_file" \
+                    -cert_chain "$cert_chain" \
                     -key   "$key_file"  \
                     -provider default \
                     -provider oqsprovider \
@@ -412,12 +415,14 @@ function classic_tests() {
                 if [[ $classic_alg == "prime256v1" || $classic_alg == "secp384r1" || $classic_alg == "secp521r1" ]]; then
 
                     # Set the cert/key filenames for the current ECC algorithm
-                    classic_cert_file="$classic_cert_dir/${classic_alg}_server_chain.crt"
+                    classic_cert_file="$classic_cert_dir/${classic_alg}_srv.crt"
+                    classic_chain="$classic_cert_dir/${classic_alg}_server_chain.crt"
                     classic_key_file="$classic_cert_dir/${classic_alg}_srv.key"
 
                     # Start the ECC test server processes
                     "$openssl_path/bin/openssl" s_server \
                         -cert $classic_cert_file \
+                        -cert_chain "$classic_chain" \
                         -key $classic_key_file \
                         -www \
                         -tls1_3 \
@@ -430,11 +435,13 @@ function classic_tests() {
 
                     # Set the cert/key filenames for the current RSA algorithm
                     classic_cert_file="$classic_cert_dir/${classic_alg}_server_chain.crt"
+                    classic_chain="$classic_cert_dir/${classic_alg}_server_chain.crt"
                     classic_key_file="$classic_cert_dir/${classic_alg}_srv.key"
 
                     # Start the RSA test server processes
                     "$openssl_path/bin/openssl" s_server \
                         -cert $classic_cert_file \
+                        -cert_chain "$classic_chain" \
                         -key $classic_key_file \
                         -www \
                         -tls1_3 \
