@@ -12,12 +12,12 @@ from matplotlib import cm
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 SAVE_PATH_SCATTER_SCENARIOS_ALL = Path(
-    r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Alle\PC"
+    r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Alle\Raspi"
     r"\all_scatter_classic_vs_pq_all_runs.png"
 )
 
 SAVE_PATH_SCATTER_SCENARIOS_MEAN = Path(
-    r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Alle\PC"
+    r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Alle\Raspi"
     r"\all_scatter_MLKEM1024_classic_vs_pq_mean.png"
 )
 
@@ -32,16 +32,16 @@ BASE_FOLDER_CLASSIC = BASE_FOLDER_PQ
 
 SCENARIOS = {
     1: {
-        "classic": BASE_FOLDER_CLASSIC / "machine_1111" / "handshake_results" / "classic",
-        "pq": BASE_FOLDER_PQ / "machine_1111" / "handshake_results" / "pqc",
+        "classic": BASE_FOLDER_CLASSIC / "machine_1" / "handshake_results" / "classic",
+        "pq": BASE_FOLDER_PQ / "machine_1" / "handshake_results" / "pqc",
     },
     2: {
-        "classic": BASE_FOLDER_CLASSIC / "machine_22222" / "handshake_results" / "classic",
-        "pq": BASE_FOLDER_PQ / "machine_22222" / "handshake_results" / "pqc",
+        "classic": BASE_FOLDER_CLASSIC / "machine_2" / "handshake_results" / "classic",
+        "pq": BASE_FOLDER_PQ / "machine_2" / "handshake_results" / "pqc",
     },
     3: {
-        "classic": BASE_FOLDER_CLASSIC / "machine_3333" / "handshake_results" / "classic",
-        "pq": BASE_FOLDER_PQ / "machine_3333" / "handshake_results" / "pqc",
+        "classic": BASE_FOLDER_CLASSIC / "machine_3" / "handshake_results" / "classic",
+        "pq": BASE_FOLDER_PQ / "machine_3" / "handshake_results" / "pqc",
     },
 }
 
@@ -242,11 +242,14 @@ def plot_scatter_scenarios(show="all"):
             x_labels.append(f"S{sc} – {mode}")
             x_positions[(sc,mode)] = idx
             idx +=1
+
     plt.figure(figsize=(12,6))
+
     algos = data["algorithm"].unique()
     offsets = {a:0.0 for a in algos}
     point_size = 60 if show=="mean" else 25
     alpha = 0.9 if show=="mean" else 0.7
+
     for algo in algos:
         subset = data[data["algorithm"]==algo]
         xs = [x_positions[(r.scenario,r.mode)]+offsets[algo] for r in subset.itertuples()]
@@ -257,6 +260,7 @@ def plot_scatter_scenarios(show="all"):
         color = get_algo_color(algo, subset.iloc[0]["mode"])
         plt.plot(xs_sorted, ys_sorted, linestyle='-', color=color, alpha=0.6)
         plt.scatter(xs, ys, color=color, label=algo, s=point_size, alpha=alpha)
+
     title_suffix = "Mittelwert pro Signatur" if show=="mean" else "Alle Runs"
     plt.title(f"TLS-Handshake-Performance: Classic vs PQ über Szenarien ({title_suffix})")
     plt.xticks(range(len(x_labels)), x_labels, rotation=30)
@@ -290,6 +294,7 @@ def plot_median_duration(show="mean"):
     offsets = {a:0.0 for a in algos}
     point_size = 60 if show=="mean" else 25
     alpha = 0.9 if show=="mean" else 0.7
+
     for algo in algos:
         subset = data[data["algorithm"]==algo]
         xs = [x_positions[(r.scenario,r.mode)]+offsets[algo] for r in subset.itertuples()]
@@ -300,6 +305,7 @@ def plot_median_duration(show="mean"):
         color = get_algo_color(algo, subset.iloc[0]["mode"])
         plt.plot(xs_sorted, ys_sorted, linestyle='-', color=color, alpha=0.6)
         plt.scatter(xs, ys, color=color, label=algo, s=point_size, alpha=alpha)
+        
     plt.title(f"Median User Time pro TLS-Handshake {' (Alle Runs)' if show=='all' else ''}")
     plt.xticks(range(len(x_labels)), x_labels, rotation=30)
     plt.ylabel("Median Dauer pro Handshake (s)")
