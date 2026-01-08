@@ -120,7 +120,7 @@ function classic_keygen() {
                 -keyout "$classic_cert_dir/${sig_name}_rootCA.key" \
                 -out "$classic_cert_dir/${sig_name}_rootCA.crt" \
                 -nodes -subj "/CN=oqstest Root CA" -days 365 \
-                -config "$openssl_path/openssl.cnf"
+                -config "$openssl_path/openssl.cnf" -extensions v3_ca
         else
             "$openssl_path/bin/openssl" ecparam -name $sig -genkey \
                 -out "$classic_cert_dir/${sig_name}_rootCA.key"
@@ -128,7 +128,7 @@ function classic_keygen() {
                 -key "$classic_cert_dir/${sig_name}_rootCA.key" \
                 -out "$classic_cert_dir/${sig_name}_rootCA.crt" \
                 -subj "/CN=oqstest Root CA" -days 365 \
-                -config "$openssl_path/openssl.cnf"
+                -config "$openssl_path/openssl.cnf" -extensions v3_ca
         fi
 
         # === 2. Intermediate CA ===
@@ -153,7 +153,8 @@ function classic_keygen() {
             -out "$classic_cert_dir/${sig_name}_intCA.crt" \
             -CA "$classic_cert_dir/${sig_name}_rootCA.crt" \
             -CAkey "$classic_cert_dir/${sig_name}_rootCA.key" \
-            -CAcreateserial -days 365
+            -CAcreateserial -days 365 \
+            -extfile "$openssl_path/openssl.cnf" -extensions v3_intermediate_ca 
 
         rm -f "$classic_cert_dir/${sig_name}_intCA.csr"
 
@@ -179,7 +180,8 @@ function classic_keygen() {
             -out "$classic_cert_dir/${sig_name}_srv.crt" \
             -CA "$classic_cert_dir/${sig_name}_intCA.crt" \
             -CAkey "$classic_cert_dir/${sig_name}_intCA.key" \
-            -CAcreateserial -days 365
+            -CAcreateserial -days 365 \
+            -extfile "$openssl_path/openssl.cnf" -extensions server_cert \
 
         rm -f "$classic_cert_dir/${sig_name}_srv.csr"
 
@@ -209,7 +211,7 @@ function pqc_keygen() {
             -keyout "$pqc_cert_dir/${sig}_rootCA.key" \
             -out "$pqc_cert_dir/${sig}_rootCA.crt" \
             -nodes -subj "/CN=oqstest $sig Root CA" -days 365 \
-            -config "$openssl_path/openssl.cnf" \
+            -config "$openssl_path/openssl.cnf"  -extensions v3_ca \
             -provider default -provider oqsprovider -provider-path "$provider_path"
 
         # --- 2. Intermediate CA ---
@@ -226,6 +228,7 @@ function pqc_keygen() {
             -CA "$pqc_cert_dir/${sig}_rootCA.crt" \
             -CAkey "$pqc_cert_dir/${sig}_rootCA.key" \
             -CAcreateserial -days 365 \
+            -extfile "$openssl_path/openssl.cnf" -extensions v3_intermediate_ca \
             -provider default -provider oqsprovider -provider-path "$provider_path"
 
         rm -f "$pqc_cert_dir/${sig}_intCA.csr"
@@ -244,6 +247,7 @@ function pqc_keygen() {
             -CA "$pqc_cert_dir/${sig}_intCA.crt" \
             -CAkey "$pqc_cert_dir/${sig}_intCA.key" \
             -CAcreateserial -days 365 \
+            -extfile "$openssl_path/openssl.cnf" -extensions server_cert \
             -provider default -provider oqsprovider -provider-path "$provider_path"
 
         rm -f "$pqc_cert_dir/${sig}_srv.csr"
