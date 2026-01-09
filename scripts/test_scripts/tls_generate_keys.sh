@@ -133,7 +133,8 @@ function classic_keygen() {
                 -in "$classic_cert_dir/${sig_name}_RootA.csr" \
                 -signkey "$classic_cert_dir/${sig_name}_RootA.key" \
                 -out "$classic_cert_dir/${sig_name}_RootA.crt" \
-                -days 365 || {
+                -days 365 \
+                -extfile "$openssl_path/openssl.cnf" -extensions v3_ca  || {
                 echo "[ERROR] Failed to self-sign RootA for $sig_name"
                 continue
             }
@@ -143,7 +144,7 @@ function classic_keygen() {
                 -keyout "$classic_cert_dir/${sig_name}_RootB.key" \
                 -out "$classic_cert_dir/${sig_name}_RootB.crt" \
                 -nodes -subj "/CN=RootB $sig CA" -days 365 \
-                -config "$openssl_path/openssl.cnf" || {
+                -config "$openssl_path/openssl.cnf" -extensions v3_ca || {
                 echo "[ERROR] Failed to create RootB for $sig_name"
                 continue
             }
@@ -154,7 +155,8 @@ function classic_keygen() {
                 -out "$classic_cert_dir/${sig_name}_RootA_cross_by_RootB.crt" \
                 -CA "$classic_cert_dir/${sig_name}_RootB.crt" \
                 -CAkey "$classic_cert_dir/${sig_name}_RootB.key" \
-                -CAcreateserial -days 365 || {
+                -CAcreateserial -days 365 \
+                -extfile "$openssl_path/openssl.cnf" -extensions v3_intermediate_ca || {
                 echo "[ERROR] Failed to cross-sign RootA by RootB for $sig_name"
                 continue
             }
@@ -173,7 +175,8 @@ function classic_keygen() {
                 -out "$classic_cert_dir/${sig_name}_IntermediateA.crt" \
                 -CA "$classic_cert_dir/${sig_name}_RootA.crt" \
                 -CAkey "$classic_cert_dir/${sig_name}_RootA.key" \
-                -CAcreateserial -days 365
+                -CAcreateserial -days 365 \
+                -extfile "$openssl_path/openssl.cnf" -extensions v3_intermediate_ca
 
             rm -f "$classic_cert_dir/${sig_name}_IntermediateA.csr"
 
@@ -189,7 +192,8 @@ function classic_keygen() {
                 -out "$classic_cert_dir/${sig_name}_srv.crt" \
                 -CA "$classic_cert_dir/${sig_name}_IntermediateA.crt" \
                 -CAkey "$classic_cert_dir/${sig_name}_IntermediateA.key" \
-                -CAcreateserial -days 365
+                -CAcreateserial -days 365 \
+                -extfile "$openssl_path/openssl.cnf" -extensions server_cert
 
             rm -f "$classic_cert_dir/${sig_name}_srv.csr"
 
@@ -218,7 +222,8 @@ function classic_keygen() {
                 -in "$classic_cert_dir/${sig_name}_RootA.csr" \
                 -signkey "$classic_cert_dir/${sig_name}_RootA.key" \
                 -out "$classic_cert_dir/${sig_name}_RootA.crt" \
-                -days 365 || {
+                -days 365 \
+                -extfile "$openssl_path/openssl.cnf" -extensions v3_ca  || {
                 echo "[ERROR] Failed to self-sign RootA for $sig_name"
                 continue
             }
@@ -234,7 +239,7 @@ function classic_keygen() {
                 -key "$classic_cert_dir/${sig_name}_RootB.key" \
                 -out "$classic_cert_dir/${sig_name}_RootB.crt" \
                 -subj "/CN=RootB $sig CA" -days 365 \
-                -config "$openssl_path/openssl.cnf" || {
+                -config "$openssl_path/openssl.cnf"  -extensions v3_ca || {
                 echo "[ERROR] Failed to create RootB for $sig_name"
                 continue
             }
@@ -245,7 +250,8 @@ function classic_keygen() {
                 -out "$classic_cert_dir/${sig_name}_RootA_cross_by_RootB.crt" \
                 -CA "$classic_cert_dir/${sig_name}_RootB.crt" \
                 -CAkey "$classic_cert_dir/${sig_name}_RootB.key" \
-                -CAcreateserial -days 365 || {
+                -CAcreateserial -days 365 \
+                -extfile "$openssl_path/openssl.cnf" -extensions v3_intermediate_ca || {
                 echo "[ERROR] Failed to cross-sign RootA by RootB for $sig_name"
                 continue
             }
@@ -267,7 +273,8 @@ function classic_keygen() {
                 -out "$classic_cert_dir/${sig_name}_IntermediateA.crt" \
                 -CA "$classic_cert_dir/${sig_name}_RootA.crt" \
                 -CAkey "$classic_cert_dir/${sig_name}_RootA.key" \
-                -CAcreateserial -days 365
+                -CAcreateserial -days 365 \
+                -extfile "$openssl_path/openssl.cnf" -extensions v3_intermediate_ca
 
             rm -f "$classic_cert_dir/${sig_name}_IntermediateA.csr"
 
@@ -286,7 +293,8 @@ function classic_keygen() {
                 -out "$classic_cert_dir/${sig_name}_srv.crt" \
                 -CA "$classic_cert_dir/${sig_name}_IntermediateA.crt" \
                 -CAkey "$classic_cert_dir/${sig_name}_IntermediateA.key" \
-                -CAcreateserial -days 365
+                -CAcreateserial -days 365 \
+                -extfile "$openssl_path/openssl.cnf" -extensions server_cert
 
             rm -f "$classic_cert_dir/${sig_name}_srv.csr"
         fi
@@ -342,6 +350,7 @@ function pqc_keygen() {
             -signkey "$pqc_cert_dir/${sig_name}_RootA.key" \
             -out "$pqc_cert_dir/${sig_name}_RootA.crt" \
             -days 365 \
+            -extfile "$openssl_path/openssl.cnf" -extensions v3_ca \
             -provider default -provider oqsprovider -provider-path "$provider_path" || {
             echo "[ERROR] Failed to self-sign RootA for $sig_name"
             continue
@@ -353,6 +362,7 @@ function pqc_keygen() {
             -out "$pqc_cert_dir/${sig_name}_RootB.crt" \
             -subj "/CN=RootB $sig CA" -days 365 \
             -config "$openssl_path/openssl.cnf" \
+            -config "$openssl_path/openssl.cnf" -extensions v3_ca \
             -provider default -provider oqsprovider -provider-path "$provider_path" || {
             echo "[ERROR] Failed to create RootB for $sig_name"
             continue
@@ -365,7 +375,8 @@ function pqc_keygen() {
             -CA "$pqc_cert_dir/${sig_name}_RootB.crt" \
             -CAkey "$pqc_cert_dir/${sig_name}_RootB.key" \
             -CAcreateserial -days 365 \
-            -provider default -provider oqsprovider -provider-path "$provider_path" || {
+            -provider default -provider oqsprovider -provider-path "$provider_path" \
+            -extfile "$openssl_path/openssl.cnf" -extensions v3_intermediate_ca || {
             echo "[ERROR] Failed to cross-sign RootA by RootB for $sig_name"
             continue
         }
@@ -386,6 +397,7 @@ function pqc_keygen() {
             -CA "$pqc_cert_dir/${sig_name}_RootA.crt" \
             -CAkey "$pqc_cert_dir/${sig_name}_RootA.key" \
             -CAcreateserial -days 365 \
+            -extfile "$openssl_path/openssl.cnf" -extensions v3_intermediate_ca \
             -provider default -provider oqsprovider -provider-path "$provider_path"
 
         rm -f "$pqc_cert_dir/${sig_name}_IntermediateA.csr"
@@ -404,6 +416,7 @@ function pqc_keygen() {
             -CA "$pqc_cert_dir/${sig_name}_IntermediateA.crt" \
             -CAkey "$pqc_cert_dir/${sig_name}_IntermediateA.key" \
             -CAcreateserial -days 365 \
+            -extfile "$openssl_path/openssl.cnf" -extensions server_cert \
             -provider default -provider oqsprovider -provider-path "$provider_path"
 
         rm -f "$pqc_cert_dir/${sig_name}_srv.csr"

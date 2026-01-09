@@ -335,12 +335,14 @@ function pqc_tests() {
 
                 # Set the cert and key files depending on the test type
                 if [ "$test_type" -eq 0 ]; then
-                    cert_file="$pqc_cert_dir/""${sig/:/_}""_server_chain.crt"
+                    cert_file="$pqc_cert_dir/""${sig/:/_}""_srv.crt"
+                    cert_chain="$pqc_cert_dir/""${sig/:/_}""_server_chain.crt"
                     key_file="$pqc_cert_dir/""${sig/:/_}""_srv.key"
                     handshake_dir=$TRAFFIC_PQC
 
                 elif [ "$test_type" -eq 1 ]; then
-                    cert_file="$hybrid_cert_dir/""${sig/:/_}""_server_chain.crt"
+                    cert_file="$hybrid_cert_dir/""${sig/:/_}""_srv.crt"
+                    cert_chain="$pqc_cert_dir/""${sig/:/_}""_server_chain.crt"
                     key_file="$hybrid_cert_dir/""${sig/:/_}""_srv.key"
                     handshake_dir=$TRAFFIC_HYBRID
 
@@ -354,6 +356,7 @@ function pqc_tests() {
                 # Start the OpenSSL s_server process
                 "$openssl_path/bin/openssl" s_server \
                     -cert  "$cert_file" \
+                    -cert_chain "$cert_chain" \
                     -key   "$key_file"  \
                     -provider default \
                     -provider oqsprovider \
@@ -404,6 +407,8 @@ function pqc_tests() {
 
             done
 
+            sleep 29
+
         done
 
     done
@@ -447,7 +452,8 @@ function classic_tests() {
                 if [[ $classic_alg == "prime256v1" || $classic_alg == "secp384r1" || $classic_alg == "secp521r1" ]]; then
 
                     # Set the cert/key filenames for the current ECC algorithm
-                    classic_cert_file="$classic_cert_dir/${classic_alg}_server_chain.crt"
+                    classic_cert_file="$classic_cert_dir/${classic_alg}_srv.crt"
+                    classic_chain="$classic_cert_dir/${classic_alg}_server_chain.crt"
                     classic_key_file="$classic_cert_dir/${classic_alg}_srv.key"
 
                     handshake_dir=$TRAFFIC_CLASSIC
@@ -460,6 +466,7 @@ function classic_tests() {
                     # Start the ECC test server processes
                     "$openssl_path/bin/openssl" s_server \
                         -cert $classic_cert_file \
+                        -cert_chain "$classic_chain" \
                         -key $classic_key_file \
                         -www \
                         -keylogfile "$keylog_file" \
@@ -473,6 +480,7 @@ function classic_tests() {
 
                     # Set the cert/key filenames for the current RSA algorithm
                     classic_cert_file="$classic_cert_dir/${classic_alg}_server_chain.crt"
+                    classic_chain="$classic_cert_dir/${classic_alg}_server_chain.crt"
                     classic_key_file="$classic_cert_dir/${classic_alg}_srv.key"
 
                     handshake_dir=$TRAFFIC_CLASSIC
@@ -485,6 +493,7 @@ function classic_tests() {
                     # Start the RSA test server processes
                     "$openssl_path/bin/openssl" s_server \
                         -cert $classic_cert_file \
+                        -cert_chain "$classic_chain" \
                         -key $classic_key_file \
                         -www \
                         -keylogfile "$keylog_file" \
@@ -532,6 +541,8 @@ function classic_tests() {
                 fi
 
             done
+
+            sleep 29
 
         done
 
@@ -613,6 +624,10 @@ function tls_server_test_entrypoint() {
 
         # Output that the current run is complete
         echo "[OUTPUT] - All $run_num Testing Completed"
+
+        echo "timeout for 5 min"
+        sleep 300
+        echo "resuming run"
 
     done
 
