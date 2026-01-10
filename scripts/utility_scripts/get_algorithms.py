@@ -34,7 +34,7 @@ oqs_provider_src_dir = ""
 
 
 list_of_study_algs = [
-    'prime256v1', 'Falcon-1024', 'ML-DSA-65', 'Dilithium2', 'falconpadded512', 'Falcon-padded-512', 'ML-DSA-44', 'MLDSA87', 'Dilithium5', 'SPHINCS+-SHA2-256f-simple', 'Dilithium3', 'secp384r1', 'sphincssha2192ssimple', 'MLDSA44', 'sphincssha2128ssimple', 'sphincssha2256fsimple', 'sphincssha2192fsimple', 'SPHINCS+-SHA2-192s-simple', 'RSA_2048', 'SPHINCS+-SHA2-128s-simple', 'MLKEM1024', 'sphincssha2128fsimple', 'Falcon-padded-1024', 'RSA_3072', 'SPHINCS+-SHA2-256s-simple', 'Falcon-512', 'falconpadded1024', 'ML-KEM-768', 'falcon1024', 'MLKEM768', 'SPHINCS+-SHA2-128f-simple', 'SPHINCS+-SHA2-192f-simple', 'ML-DSA-87', 'falcon512', 'ML-KEM-1024', 'sphincssha2256ssimple', 'MLDSA65', 'p256_mlkem512', 'p256_sphincsshake128ssimple', 'p256_sphincssha2128ssimple','RSA_4096', 'secp521r1'
+    'prime256v1', 'Falcon-1024', 'ML-DSA-65', 'Dilithium2', 'falconpadded512', 'Falcon-padded-512', 'ML-DSA-44', 'MLDSA87', 'Dilithium5',  'Dilithium3', 'secp384r1', 'MLDSA44', 'sphincssha2128ssimple', 'RSA_2048', 'SPHINCS+-SHA2-128s-simple', 'MLKEM1024', 'sphincssha2128fsimple', 'Falcon-padded-1024', 'RSA_3072', 'Falcon-512', 'falconpadded1024', 'ML-KEM-768', 'falcon1024', 'MLKEM768', 'SPHINCS+-SHA2-128f-simple', 'ML-DSA-87', 'falcon512', 'ML-KEM-1024', 'MLDSA65', 'p256_mlkem512', 'p256_sphincsshake128ssimple', 'p256_sphincssha2128ssimple','RSA_4096', 'secp521r1'
 ]
 
 
