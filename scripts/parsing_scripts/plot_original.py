@@ -12,12 +12,12 @@ from matplotlib import cm
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 SAVE_PATH_SCATTER_SCENARIOS_ALL = Path(
-    r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Alle\Raspi"
+    r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Alle\Original"
     r"\all_scatter_classic_vs_pq_all_runs.png"
 )
 
 SAVE_PATH_SCATTER_SCENARIOS_MEAN = Path(
-    r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Alle\Raspi"
+    r"C:\Users\marie\OneDrive\Documents\Fernuni\Masterarbeit\Plots\Alle\Original"
     r"\all_scatter_MLKEM1024_classic_vs_pq_mean.png"
 )
 
@@ -32,16 +32,16 @@ BASE_FOLDER_CLASSIC = BASE_FOLDER_PQ
 
 SCENARIOS = {
     1: {
-        "classic": BASE_FOLDER_CLASSIC / "machine_1" / "handshake_results" / "classic",
-        "pq": BASE_FOLDER_PQ / "machine_1" / "handshake_results" / "pqc",
+        "classic": BASE_FOLDER_CLASSIC / "machine_1111" / "handshake_results" / "classic",
+        "pq": BASE_FOLDER_PQ / "machine_1111" / "handshake_results" / "pqc",
     },
     2: {
-        "classic": BASE_FOLDER_CLASSIC / "machine_2" / "handshake_results" / "classic",
-        "pq": BASE_FOLDER_PQ / "machine_2" / "handshake_results" / "pqc",
+        "classic": BASE_FOLDER_CLASSIC / "machine_1_org" / "handshake_results" / "classic",
+        "pq": BASE_FOLDER_PQ / "machine_1_org" / "handshake_results" / "pqc",
     },
     3: {
-        "classic": BASE_FOLDER_CLASSIC / "machine_3" / "handshake_results" / "classic",
-        "pq": BASE_FOLDER_PQ / "machine_3" / "handshake_results" / "pqc",
+        "classic": BASE_FOLDER_CLASSIC / "machine_22222" / "handshake_results" / "classic",
+        "pq": BASE_FOLDER_PQ / "machine_22222" / "handshake_results" / "pqc",
     },
 }
 
@@ -237,9 +237,10 @@ def plot_scatter_scenarios(show="all"):
     if show == "mean":
         data = data.groupby(["scenario","mode","algorithm"], as_index=False).agg(value=("value","mean"))
     x_labels,x_positions,idx = [],{},0
+    scenario_names = {1: "S1", 2: "Original", 3: "S2"}
     for sc in [1,2,3]:
         for mode in ["classic","pq"]:
-            x_labels.append(f"S{sc} – {mode}")
+            x_labels.append(f"{scenario_names[sc]} – {mode}")
             x_positions[(sc,mode)] = idx
             idx +=1
 
@@ -284,9 +285,10 @@ def plot_median_duration(show="mean"):
     if show=="mean":
         data = data.groupby(["scenario","mode","algorithm"], as_index=False).agg(value=("value","median"))
     x_labels,x_positions,idx = [],{},0
+    scenario_names = {1: "S1", 2: "Original", 3: "S2"}
     for sc in [1,2,3]:
         for mode in ["classic","pq"]:
-            x_labels.append(f"S{sc} – {mode}")
+            x_labels.append(f"{scenario_names[sc]} – {mode}")
             x_positions[(sc,mode)] = idx
             idx+=1
     plt.figure(figsize=(12,6))
@@ -327,9 +329,10 @@ def plot_median_real_time(show="mean"):
     if show=="mean":
         data = data.groupby(["scenario","mode","algorithm"], as_index=False).agg(value=("value","median"))
     x_labels,x_positions,idx = [],{},0
+    scenario_names = {1: "S1", 2: "Original", 3: "S2"}
     for sc in [1,2,3]:
         for mode in ["classic","pq"]:
-            x_labels.append(f"S{sc} – {mode}")
+            x_labels.append(f"{scenario_names[sc]} – {mode}")
             x_positions[(sc,mode)] = idx
             idx+=1
     plt.figure(figsize=(12,6))
@@ -368,45 +371,66 @@ def plot_median_real_time(show="mean"):
 # CREATE TABLES WITH MEDIAN AND PERCENTUAL CHANGES
 # ============================================================
 
+def calculate_percentiles_original(data):
+    """
+    Berechnet P25, P50, P75 für Original-Szenario (2) je Algorithmus.
+    """
+    original_data = data[data['scenario'] == 2]  # nur Original
+    percentiles = original_data.groupby('algorithm')['value'].quantile([0.25, 0.5, 0.75])
+    percentiles = percentiles.unstack()  # MultiIndex -> Spalten
+    percentiles.rename(columns={0.25:'P25_Original', 0.5:'P50_Original', 0.75:'P75_Original'}, inplace=True)
+    return percentiles
+
+
 def make_summary_table(data, value_name, filename_prefix):
     """
-    data: DataFrame mit Spalten ['scenario','mode','algorithm','value']
-    value_name: z.B. 'Median User Time' oder 'Handshakes'
-    filename_prefix: Basisname für CSV-Datei
+    data: Rohdaten DataFrame ['scenario','mode','algorithm','value']
+    value_name: z.B. 'TLS-Handshakes' oder 'Median User Time'
+    filename_prefix: Basisname CSV
     """
-    
+    # Mittelwerte je Szenario/Algorithmus
     summary = data.groupby(['scenario','mode','algorithm'], as_index=False)['value'].mean()
     
-    # Pivot-Tabelle: Zeilen = Algorithmus, Spalten = Szenario
+    # Pivot: Zeilen = Algorithmus, Spalten = Szenario
     pivot = summary.pivot(index='algorithm', columns='scenario', values='value').sort_index()
-    
-    # Szenario 1 als Baseline
+
+    # Änderungen berechnen (S1 = Baseline)
     pivot['Change_S2'] = pivot[2] - pivot[1]
     pivot['Change_S3'] = pivot[3] - pivot[1]
     pivot['Change_S2_%'] = (pivot['Change_S2'] / pivot[1]) * 100
     pivot['Change_S3_%'] = (pivot['Change_S3'] / pivot[1]) * 100
     
+    # Spalten umbenennen
+    pivot.rename(columns={1: "S1", 2: "Original", 3: "S2"}, inplace=True)
+
+    # --- Echte Perzentile für Originaldaten einfügen ---
+    percentiles = calculate_percentiles_original(data)
+    pivot = pivot.merge(percentiles, left_index=True, right_index=True)
+
     # CSV speichern
     csv_path = SAVE_PATH_SCATTER_SCENARIOS_MEAN.parent / f"{filename_prefix}_summary.csv"
     pivot.to_csv(csv_path, float_format='%.3f')
     print(f"\n[{value_name}] Tabelle gespeichert: {csv_path}\n")
-    
-    # Tabelle auf Kommandozeile ausgeben
+
+    # Übersicht auf Kommandozeile
     print(f"--- {value_name} Übersicht ---")
     print(pivot.round(3).to_string())
     print("-"*50)
 
+
 def create_all_summary_tables():
-    # Handshakes in 61s
-    data_handshakes = collect_all_data().groupby(['scenario','mode','algorithm'], as_index=False).agg(value=('value','mean'))
+    """
+    Erstellt alle Tabellen: Handshakes, Median User Time, Median Real Time
+    => benutzt die Rohdaten direkt, berechnet Mittelwerte, Änderungen und Original-Perzentile.
+    """
+    # Rohdaten sammeln
+    data_handshakes = collect_all_data()
+    data_user_time = collect_all_median_duration()
+    data_real_time = collect_all_median_real_time()
+
+    # Tabellen erstellen
     make_summary_table(data_handshakes, "TLS-Handshakes", "handshakes")
-    
-    # Median User Time
-    data_user_time = collect_all_median_duration().groupby(['scenario','mode','algorithm'], as_index=False).agg(value=('value','median'))
     make_summary_table(data_user_time, "Median User Time", "median_user_time")
-    
-    # Median Real Time
-    data_real_time = collect_all_median_real_time().groupby(['scenario','mode','algorithm'], as_index=False).agg(value=('value','median'))
     make_summary_table(data_real_time, "Median Real Time", "median_real_time")
 
 
