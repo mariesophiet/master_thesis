@@ -339,6 +339,12 @@ function pqc_tests() {
                     # Perform the testing until successful or the fail counter reaches its limit
                     while true; do
 
+                        #"$openssl_path/bin/openssl" s_client -connect $SERVER_IP:$S_SERVER_PORT -showcerts -CAfile "$cert_file" -verify 3 \
+                        #-provider default \
+                        #-provider oqsprovider \
+                        #-provider-path "$provider_path" > "$handshake_dir/$output_name"
+
+
                         # Run the OpenSSL s_time process with the current test parameters and grab the exit code
                         "$openssl_path/bin/openssl" s_time \
                             -connect "${SERVER_IP}:${S_SERVER_PORT}" \
@@ -434,6 +440,8 @@ function classic_tests() {
 
                 # Perform the testing until successful or the fail counter reaches its limit
                 while true; do
+
+                    #"$openssl_path/bin/openssl" s_client -connect $SERVER_IP:$S_SERVER_PORT -showcerts -CAfile $classic_cert_file -verify 3
 
                     # Run the OpenSSL s_time process with the current test parameters and grab the exit code
                     "$openssl_path/bin/openssl" s_time \
@@ -557,7 +565,9 @@ function tls_client_test_entrypoint() {
 
         # Output that the current run is complete
         echo "[OUTPUT] - All $run_num Testing Completed"
-
+        echo "timeout for 5 min"
+        sleep 310
+        echo "resuming run"
     done
 
 }
