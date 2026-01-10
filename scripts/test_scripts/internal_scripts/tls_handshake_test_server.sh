@@ -323,7 +323,7 @@ function pqc_tests() {
 
                 elif [ "$test_type" -eq 1 ]; then
                     cert_file="$hybrid_cert_dir/""${sig/:/_}""_srv.crt"
-                    cert_chain="$pqc_cert_dir/""${sig/:/_}""_server_chain.crt"
+                    cert_chain="$hybrid_cert_dir/""${sig/:/_}""_server_chain.crt"
                     key_file="$hybrid_cert_dir/""${sig/:/_}""_srv.key"
                 fi
 
