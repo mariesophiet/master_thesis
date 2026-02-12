@@ -18,8 +18,9 @@ TLS_TYPES = {
     8: "EncryptedExtensions",
     11: "Certificate",
     12: "ServerKeyExchange",
+    13: "CertificateRequest",
     14: "ServerHelloDone",
-    15: "ClientKeyExchange",
+    15: "CertificateVerify",
     20: "Finished"
 }
 
